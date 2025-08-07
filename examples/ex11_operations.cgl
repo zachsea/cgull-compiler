@@ -17,10 +17,10 @@ fn main() -> int {
   println("Value of ptr2: " + *ptr2);
 
   // Bitwise operations (on the pointer addresses)
-  long andResult = (ptr as long) & (ptr2 as long);
-  long orResult = (ptr as long) | (ptr2 as long);
-  long xorResult = (ptr as long) ^ (ptr2 as long);
-  long notResult = ~(ptr as long);
+  int andResult = (ptr as int) & (ptr2 as int);
+  int orResult = (ptr as int) | (ptr2 as int);
+  int xorResult = (ptr as int) ^ (ptr2 as int);
+  int notResult = ~(ptr as int);
 
   println("Bitwise actions on the pointer addresses p1 " + ptr + " and p2 " + ptr2);
   println("Bitwise AND: " + andResult);

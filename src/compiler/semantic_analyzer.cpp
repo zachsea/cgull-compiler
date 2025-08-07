@@ -31,6 +31,8 @@ void SemanticAnalyzer::analyze(cgullParser::ProgramContext* programCtx) {
   // FOURTH PASS: validate types and expressions
   TypeCheckingListener typeChecker(errorReporter, scopeMap, globalScope);
   walker.walk(&typeChecker, programCtx);
+  expressionTypes = typeChecker.getExpressionTypes();
+  expectingStringConversion = typeChecker.getExpectingStringConversion();
 
   // FIFTH PASS: check for use before definition errors
   UseBeforeDefinitionListener useBeforeDefListener(errorReporter, scopeMap);
@@ -57,29 +59,17 @@ void SemanticAnalyzer::addBuiltinFunctions() {
   };
 
   auto intType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::INT);
-  auto shortType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::SHORT);
-  auto longType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::LONG);
   auto floatType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::FLOAT);
-  auto charType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::CHAR);
   auto boolType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::BOOLEAN);
   auto stringType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::STRING);
   auto voidType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID);
-  auto unsignedIntType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::UNSIGNED_INT);
-  auto unsignedShortType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::UNSIGNED_SHORT);
-  auto unsignedLongType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::UNSIGNED_LONG);
-  auto unsignedCharType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::UNSIGNED_CHAR);
-  auto signedIntType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::SIGNED_INT);
-  auto signedShortType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::SIGNED_SHORT);
-  auto signedLongType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::SIGNED_LONG);
-  auto signedCharType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::SIGNED_CHAR);
 
   addBuiltinFunction("println", {{"value", stringType}}, {voidType});
   addBuiltinFunction("print", {{"value", stringType}}, {voidType});
-  addBuiltinFunction("print", {{"value", stringType}, {"end", charType}}, {voidType});
   addBuiltinFunction("readline", {}, {stringType});
-  addBuiltinFunction("read", {}, {charType});
-  addBuiltinFunction("read", {{"delimiter", charType}}, {stringType});
-  addBuiltinFunction("read", {{"delimiter", charType}, {"maxChars", intType}}, {stringType});
+  addBuiltinFunction("read", {}, {stringType});
+  addBuiltinFunction("read", {{"delimiter", stringType}}, {stringType});
+  addBuiltinFunction("read", {{"delimiter", stringType}, {"maxChars", intType}}, {stringType});
 
   // math functions, eventually will be moved to a math library
   addBuiltinFunction("sqrt", {{"value", floatType}}, {floatType});
@@ -258,4 +248,16 @@ std::string SemanticAnalyzer::getScopeName(std::shared_ptr<Scope> scope) const {
   }
 
   return "Block at Line " + std::to_string(ctx->getStart()->getLine());
+}
+
+const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& SemanticAnalyzer::getScopes() {
+  return scopeMap;
+}
+
+const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>>& SemanticAnalyzer::getExpressionTypes() {
+  return expressionTypes;
+}
+
+const std::unordered_set<antlr4::ParserRuleContext*>& SemanticAnalyzer::getExpectingStringConversion() const {
+  return expectingStringConversion;
 }

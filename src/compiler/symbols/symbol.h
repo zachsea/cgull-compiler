@@ -1,6 +1,7 @@
 #ifndef SYMBOL_H
 #define SYMBOL_H
 
+#include "../instructions/ir_instruction.h"
 #include "type.h"
 #include <memory>
 #include <string>
@@ -31,6 +32,7 @@ public:
   VariableSymbol(const std::string& name, int line, int column, std::shared_ptr<Scope> scope, bool isConst = false);
   std::shared_ptr<Type> dataType;
   bool isConstant;
+  int localIndex = -1;
 };
 
 class TypeSymbol : public Symbol {
@@ -47,6 +49,7 @@ public:
   bool isStructMethod = false;
   std::vector<std::shared_ptr<VariableSymbol>> parameters;
   std::vector<std::shared_ptr<Type>> returnTypes;
+  std::vector<std::shared_ptr<IRInstruction>> instructions;
 
   // includes parameter types to avoid name collisions
   std::string getMangledName() const;

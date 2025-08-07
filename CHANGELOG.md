@@ -1,5 +1,25 @@
 # Changelog
 
+## [HW4]
+
+### Added
+
+- Compiler backend targeting Java bytecode via JASM (low level bytecode assembler)
+- All requirements for HW4
+  - Local variable declaration and assignment
+  - Mathematical, logical, and comparison operations
+  - Branching logic
+  - Looping logic
+  - Printing to and reading from the console
+
+### Removed
+
+Due to some introduced overhead due to limitations with JVM instructions, I decided to remove some datatypes and features for the sake of time:
+
+- Signed/unsigned keywords
+- Shorts
+- Chars
+
 ## [HW3]
 
 ### Added

@@ -228,12 +228,11 @@ See [examples/ex7_builtin.cgl](examples/ex7_builtin.cgl) for built-in functions 
 ```cgull
 println("Hello, World!"); // prints to stdout
 print("Hello, World!"); // prints to stdout without newline
-print("Hello, World!", '\t'); // prints to stdout with tab at end
 
 readline(); // reads a line from stdin
 read(); // reads up to and discards whitespace from stdin
-read('a'); // reads until 'a' is found from stdin and discards it
-read('a', 10); // reads until 'a' is found from stdin and discards it, up to 10 characters
+read("a"); // reads until 'a' is found from stdin and discards it
+read("a", 10); // reads until 'a' is found from stdin and discards it, up to 10 characters
 ```
 
 #### Casting
@@ -241,16 +240,6 @@ read('a', 10); // reads until 'a' is found from stdin and discards it, up to 10 
 See [examples/ex8_types_and_casting.cgl](examples/ex8_types_and_casting.cgl) for casting in action.
 
 Use "as" for explicit casting
-
-```cgull
-// implicit
-char c = 'a';
-int i = c; // ok: implicit conversion from char to int
-
-// explicit
-int i = 1;
-char c = i as char; // ok: explicit conversion from int to char
-```
 
 #### Misc
 
@@ -270,14 +259,7 @@ See [examples/ex8_types_and_casting.cgl](examples/ex8_types_and_casting.cgl) for
 #### Scalar Types
 
 - `bool` - 8-bit (conceptually 1-bit) boolean (true/false)
-- `char` - 8-bit signed integer (ASCII character)
-- `unsigned char` - 8-bit unsigned integer (ASCII character)
-- `short` - 16-bit signed integer
-- `unsigned short` - 16-bit unsigned integer
 - `int` - 32-bit signed integer
-- `unsigned int` - 32-bit unsigned integer
-- `long` - 64-bit signed integer
-- `unsigned long` - 64-bit unsigned integer
 - `float` - 64-bit floating point number
 
 No current support for single unicode characters, may be added in the future.
@@ -300,11 +282,7 @@ See [Composite/User-Defined Types](#compositeuser-defined-types) for tuples.
 ### Literals
 
 - Signed integers: `0`, `1`, `-1`
-- Unsigned integers: `u0`, `u5400`
-  - Note: There is no implicit conversion between signed and unsigned integers, call casting functions to convert between them.
 - Floating point numbers: `0.0`, `1.42`, `-1.42`, `+inf`, `-inf`, `nan`
-- Characters: `'a'`, `'\n'`, `'\t'`, `'\0'`, `'\xFF'`
-  - An escaped single quote is represented as `'\''`
 - Binary: `0b0`, `0b1`, `0b101010`, `0b1111_1111`
 - Octal: `0o0`, `0o1`, `0o10`, `0o777` (note: no leading zeroes)
 - Hexadecimal: `0x0`, `0x1`, `0x10`, `0xFF` (note: no leading zeroes)
@@ -314,14 +292,9 @@ See [Composite/User-Defined Types](#compositeuser-defined-types) for tuples.
 
 ### bits as
 
+// probably scraping due to JVM target
+
 For reinterpretation of bits, the `bits as` keyword combo is used. If there are more bits than the target type, the most significant bits are discarded. If there are fewer bits than the target type, the most significant bits are set to 0.
-
-```cgull
-
-char x = 0b00000001; // x is 1
-float y = x bits as float; // y is 0b0000_0000_0000_0000_0000_0000_0000_0001, or 1e-45
-println(x bits as float); // prints 1e-45
-```
 
 ### $toString
 

@@ -15,6 +15,8 @@ public:
 
   // evaluate the end result of an expression
   std::shared_ptr<Type> getExpressionType(antlr4::ParserRuleContext* ctx) const;
+  std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> getExpressionTypes() const;
+  std::unordered_set<antlr4::ParserRuleContext*> getExpectingStringConversion() const;
 
 private:
   ErrorReporter& errorReporter;
@@ -24,10 +26,14 @@ private:
 
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes;
 
+  std::unordered_set<antlr4::ParserRuleContext*> expectingStringConversion;
+
   // helper methods
   std::shared_ptr<Type> resolveType(cgullParser::TypeContext* typeCtx);
   std::shared_ptr<Type> resolvePrimitiveType(const std::string& typeName);
-  bool areTypesCompatible(const std::shared_ptr<Type>& sourceType, const std::shared_ptr<Type>& targetType);
+  bool areTypesCompatible(const std::shared_ptr<Type>& sourceType, const std::shared_ptr<Type>& targetType,
+                          antlr4::ParserRuleContext* sourceCtx = nullptr,
+                          antlr4::ParserRuleContext* targetCtx = nullptr);
   std::shared_ptr<Type> getFieldType(const std::shared_ptr<Type>& baseType, const std::string& fieldName);
   std::shared_ptr<Type> getElementType(const std::shared_ptr<Type>& arrayType);
   void setExpressionType(antlr4::ParserRuleContext* ctx, std::shared_ptr<Type> type);

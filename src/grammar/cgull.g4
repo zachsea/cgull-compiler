@@ -23,11 +23,11 @@ base_expression
     | base_expression (MULT_OP | DIV_OP | MOD_OP) base_expression
     | base_expression (PLUS_OP | MINUS_OP) base_expression
     | base_expression (BITWISE_LEFT_SHIFT_OP | BITWISE_RIGHT_SHIFT_OP) base_expression
-    | base_expression (LESS_OP | GREATER_OP | LESS_EQUAL_OP | GREATER_EQUAL_OP) base_expression
-    | base_expression (EQUAL_OP | NOT_EQUAL_OP) base_expression
     | base_expression BITWISE_AND_OP base_expression
     | base_expression BITWISE_XOR_OP base_expression
     | base_expression BITWISE_OR_OP base_expression
+    | base_expression (LESS_OP | GREATER_OP | LESS_EQUAL_OP | GREATER_EQUAL_OP) base_expression
+    | base_expression (EQUAL_OP | NOT_EQUAL_OP) base_expression
     | base_expression AND_OP base_expression
     | base_expression OR_OP base_expression
     | if_expression
@@ -75,7 +75,6 @@ literal
     | FLOAT_POSINF_LITERAL
     | FLOAT_NEGINF_LITERAL
     | FLOAT_NAN_LITERAL
-    | CHAR_LITERAL
     | STRING_LITERAL
     | HEX_LITERAL
     | BINARY_LITERAL
@@ -294,8 +293,7 @@ type_list
     ;
 
 primitive_type
-    : (SIGNED_TYPE | UNSIGNED_TYPE)? (INT_TYPE | SHORT_TYPE | LONG_TYPE | CHAR_TYPE)
-    | FLOAT_TYPE | STRING_TYPE | BOOLEAN_TYPE | VOID_TYPE
+    : INT_TYPE | FLOAT_TYPE | STRING_TYPE | BOOLEAN_TYPE | VOID_TYPE
     ;
 
 user_defined_type
@@ -355,15 +353,10 @@ INCLUSIVE_RANGE: '..=' ;
 EXCLUSIVE_RANGE: '..' ;
 
 INT_TYPE: 'int' ;
-SHORT_TYPE: 'short' ;
-LONG_TYPE: 'long' ;
 FLOAT_TYPE: 'float' ;
-CHAR_TYPE: 'char' ;
 STRING_TYPE: 'string' ;
 BOOLEAN_TYPE: 'bool' ;
 VOID_TYPE: 'void' ;
-UNSIGNED_TYPE: 'unsigned' ;
-SIGNED_TYPE: 'signed' ;
 
 STRUCT: 'struct' ;
 TUPLE: 'tuple' ;
@@ -378,7 +371,6 @@ DECIMAL_LITERAL: [0-9]+ '.' [0-9]+ ;
 FLOAT_POSINF_LITERAL: '\'+inf\'' ;
 FLOAT_NEGINF_LITERAL: '\'-inf\'' ;
 FLOAT_NAN_LITERAL: 'nan' ;
-CHAR_LITERAL: '\'' . '\'' ;
 // fragments for escaping characters
 STRING_LITERAL: '"' (ESC | ~["\\\r\n])* '"' ;
 fragment ESC: '\\' (["\\/bfnrt] | UNICODE) ;

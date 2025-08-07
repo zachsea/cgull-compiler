@@ -23,15 +23,6 @@ bool PrimitiveType::isNumeric() const {
 bool PrimitiveType::isInteger() const {
   switch (primitiveKind) {
   case PrimitiveKind::INT:
-  case PrimitiveKind::SHORT:
-  case PrimitiveKind::LONG:
-  case PrimitiveKind::UNSIGNED_INT:
-  case PrimitiveKind::UNSIGNED_SHORT:
-  case PrimitiveKind::UNSIGNED_LONG:
-  case PrimitiveKind::SIGNED_INT:
-  case PrimitiveKind::SIGNED_SHORT:
-  case PrimitiveKind::SIGNED_LONG:
-  case PrimitiveKind::SIGNED_CHAR:
     return true;
   default:
     return false;
@@ -42,36 +33,14 @@ std::string PrimitiveType::toString() const {
   switch (primitiveKind) {
   case PrimitiveKind::INT:
     return "int";
-  case PrimitiveKind::SHORT:
-    return "short";
-  case PrimitiveKind::LONG:
-    return "long";
   case PrimitiveKind::FLOAT:
     return "float";
-  case PrimitiveKind::CHAR:
-    return "char";
   case PrimitiveKind::BOOLEAN:
     return "bool";
   case PrimitiveKind::STRING:
     return "string";
   case PrimitiveKind::VOID:
     return "void";
-  case PrimitiveKind::UNSIGNED_INT:
-    return "unsigned int";
-  case PrimitiveKind::UNSIGNED_SHORT:
-    return "unsigned short";
-  case PrimitiveKind::UNSIGNED_LONG:
-    return "unsigned long";
-  case PrimitiveKind::UNSIGNED_CHAR:
-    return "unsigned char";
-  case PrimitiveKind::SIGNED_INT:
-    return "signed int";
-  case PrimitiveKind::SIGNED_SHORT:
-    return "signed short";
-  case PrimitiveKind::SIGNED_LONG:
-    return "signed long";
-  case PrimitiveKind::SIGNED_CHAR:
-    return "signed char";
   default:
     return "unknown";
   }

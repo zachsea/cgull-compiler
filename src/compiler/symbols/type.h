@@ -25,21 +25,10 @@ class PrimitiveType : public Type {
 public:
   enum class PrimitiveKind {
     INT,
-    SHORT,
-    LONG,
     FLOAT,
-    CHAR,
     BOOLEAN,
     STRING,
     VOID,
-    UNSIGNED_INT,
-    UNSIGNED_SHORT,
-    UNSIGNED_LONG,
-    UNSIGNED_CHAR,
-    SIGNED_INT,
-    SIGNED_SHORT,
-    SIGNED_LONG,
-    SIGNED_CHAR,
   };
 
   PrimitiveType(PrimitiveKind primitiveKind);

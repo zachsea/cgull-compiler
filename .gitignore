@@ -2,3 +2,4 @@
 build/
 .antlr/
 .cache/
+out/

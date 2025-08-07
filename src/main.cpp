@@ -1,3 +1,4 @@
+#include "compiler/bytecode_compiler.h"
 #include "compiler/errors/error_reporter.h"
 #include "compiler/listeners/collecting_error_listener.h"
 #include "compiler/semantic_analyzer.h"
@@ -8,6 +9,7 @@
 #include <cgullListener.h>
 #include <cgullParser.h>
 #include <cgullVisitor.h>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -18,6 +20,7 @@ enum StopStage {
   NONE,
   LEXING,
   PARSING,
+  SEMANTIC_ANALYSIS,
 };
 
 void printTokens(const cgullLexer& lexer, antlr4::CommonTokenStream& tokens) {
@@ -48,11 +51,14 @@ int main(int argc, char* argv[]) {
   StopStage stopStage = NONE;
   // TODO: better argument parsing
   if (argc < 2) {
-    std::cerr << "Usage: " << argv[0] << " <input-file> [--lexer | --parser]" << std::endl;
+    std::cerr << "Usage: " << argv[0] << " <input-file> [--lexer | --parser | --semantic]" << std::endl;
     return 1;
   }
   if (argc == 3) {
-    stopStage = ((std::string)argv[2] == "--lexer") ? LEXING : ((std::string)argv[2] == "--parser") ? PARSING : NONE;
+    stopStage = ((std::string)argv[2] == "--lexer")      ? LEXING
+                : ((std::string)argv[2] == "--parser")   ? PARSING
+                : ((std::string)argv[2] == "--semantic") ? SEMANTIC_ANALYSIS
+                                                         : NONE;
   }
 
   std::ifstream inputFile(argv[1]);
@@ -115,11 +121,58 @@ int main(int argc, char* argv[]) {
 
   SemanticAnalyzer semanticAnalyzer;
   semanticAnalyzer.analyze(tree);
-  semanticAnalyzer.printSymbolsAsJson(std::cout);
 
+  if (stopStage == SEMANTIC_ANALYSIS) {
+    semanticAnalyzer.printSymbolsAsJson(std::cout);
+    if (semanticAnalyzer.getErrorReporter().hasErrors()) {
+      std::cerr << "Semantic analysis failed with errors." << std::endl;
+      semanticAnalyzer.getErrorReporter().displayErrors();
+      return 1;
+    }
+    std::cout << "Semantic analysis completed successfully!" << std::endl;
+    return 0;
+  }
+
+  semanticAnalyzer.getErrorReporter().displayErrors();
+
+  // dont continue if there are any errors
   if (semanticAnalyzer.getErrorReporter().hasErrors()) {
-    std::cerr << "Semantic analysis failed with errors." << std::endl;
-    semanticAnalyzer.getErrorReporter().displayErrors();
+    std::cerr << "Semantic analysis failed with errors. Bytecode generation will not be performed." << std::endl;
     return 1;
   }
+
+  BytecodeCompiler compiler(tree, semanticAnalyzer.getScopes(), semanticAnalyzer.getExpressionTypes(),
+                            semanticAnalyzer.getExpectingStringConversion());
+  compiler.compile();
+
+  for (const auto& ctx : semanticAnalyzer.getExpectingStringConversion()) {
+    std::cout << "Expecting string conversion at: " << ctx->toString() << std::endl;
+  }
+
+  if (compiler.getErrorReporter().hasErrors()) {
+    std::cerr << "Bytecode generation failed with errors." << std::endl;
+    compiler.getErrorReporter().displayErrors();
+    return 1;
+  }
+  std::cout << "Bytecode generation completed successfully!" << std::endl;
+
+  try {
+    std::filesystem::create_directory("out");
+  } catch (const std::filesystem::filesystem_error& e) {
+    std::cerr << "Failed to create output directory: " << e.what() << std::endl;
+    return 1;
+  }
+
+  // for now, we only have a main class
+  std::ofstream outputFile("out/Main.jasm");
+  if (!outputFile.is_open()) {
+    std::cerr << "Failed to open output file: Main.jasm" << std::endl;
+    return 1;
+  }
+  compiler.generateBytecode(outputFile);
+  outputFile.close();
+  std::cout << "Bytecode written to Main.jasm" << std::endl;
+  std::cout << "Compilation completed successfully!" << std::endl;
+
+  return 0;
 }

@@ -423,37 +423,14 @@ std::shared_ptr<Type> SymbolCollectionListener::resolveType(cgullParser::TypeCon
 std::shared_ptr<Type> SymbolCollectionListener::resolvePrimitiveType(const std::string& typeName) {
   if (typeName == "int")
     return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::INT);
-  if (typeName == "short")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::SHORT);
-  if (typeName == "long")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::LONG);
   if (typeName == "float")
     return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::FLOAT);
-  if (typeName == "char")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::CHAR);
   if (typeName == "bool")
     return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::BOOLEAN);
   if (typeName == "string")
     return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::STRING);
   if (typeName == "void")
     return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID);
-
-  if (typeName == "unsignedint")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::UNSIGNED_INT);
-  if (typeName == "unsignedshort")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::UNSIGNED_SHORT);
-  if (typeName == "unsignedlong")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::UNSIGNED_LONG);
-  if (typeName == "unsignedchar")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::UNSIGNED_CHAR);
-  if (typeName == "signedint")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::SIGNED_INT);
-  if (typeName == "signedshort")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::SIGNED_SHORT);
-  if (typeName == "signedlong")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::SIGNED_LONG);
-  if (typeName == "signedchar")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::SIGNED_CHAR);
 
   return nullptr;
 }

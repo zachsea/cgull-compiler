@@ -17,7 +17,7 @@ fn deallocateList(Node* head) {
   }
 }
 
-fn getNeighbors(Node* head, char c) -> (Node*, Node*) {
+fn getNeighbors(Node* head, string c) -> (Node*, Node*) {
   Node* prev = nullptr;
   Node* curr = head;
   Node* next = nullptr;
@@ -33,16 +33,16 @@ fn getNeighbors(Node* head, char c) -> (Node*, Node*) {
 }
 
 fn main() -> int {
-  Node* head = allocate Node('A', nullptr);
-  head->next = allocate Node('B', nullptr);
-  head->next->next = allocate Node('C', nullptr);
+  Node* head = allocate Node("A", nullptr);
+  head->next = allocate Node("B", nullptr);
+  head->next->next = allocate Node("C", nullptr);
   head->next->next->next = nullptr;
 
   printNodes(head);
-  Node* prev, Node* next = getNeighbors(head, 'B');
+  Node* prev, Node* next = getNeighbors(head, "B");
 
-  println("Previous of B: " + (if (prev) prev->value else ' '));
-  println("Next of B: " + (if (next) next->value else ' '));
+  println("Previous of B: " + (if (prev) prev->value else " "));
+  println("Next of B: " + (if (next) next->value else " "));
 
   deallocateList(head);
 

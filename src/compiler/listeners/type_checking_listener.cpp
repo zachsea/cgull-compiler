@@ -15,6 +15,14 @@ std::shared_ptr<Type> TypeCheckingListener::getExpressionType(antlr4::ParserRule
   return nullptr;
 }
 
+std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> TypeCheckingListener::getExpressionTypes() const {
+  return expressionTypes;
+}
+
+std::unordered_set<antlr4::ParserRuleContext*> TypeCheckingListener::getExpectingStringConversion() const {
+  return expectingStringConversion;
+}
+
 void TypeCheckingListener::setExpressionType(antlr4::ParserRuleContext* ctx, std::shared_ptr<Type> type) {
   expressionTypes[ctx] = type;
 }
@@ -94,7 +102,7 @@ void TypeCheckingListener::exitReturn_statement(cgullParser::Return_statementCon
     return;
   }
 
-  if (!areTypesCompatible(returnType, currentFunctionReturnTypes[0])) {
+  if (!areTypesCompatible(returnType, currentFunctionReturnTypes[0], expression, ctx)) {
     errorReporter.reportError(ErrorType::TYPE_MISMATCH, expression->getStart()->getLine(),
                               expression->getStart()->getCharPositionInLine(),
                               "Return type mismatch: expected " + currentFunctionReturnTypes[0]->toString() +
@@ -148,37 +156,14 @@ std::shared_ptr<Type> TypeCheckingListener::resolveType(cgullParser::TypeContext
 std::shared_ptr<Type> TypeCheckingListener::resolvePrimitiveType(const std::string& typeName) {
   if (typeName == "int")
     return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::INT);
-  if (typeName == "short")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::SHORT);
-  if (typeName == "long")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::LONG);
   if (typeName == "float")
     return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::FLOAT);
-  if (typeName == "char")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::CHAR);
   if (typeName == "bool")
     return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::BOOLEAN);
   if (typeName == "string")
     return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::STRING);
   if (typeName == "void")
     return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID);
-
-  if (typeName == "unsignedint")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::UNSIGNED_INT);
-  if (typeName == "unsignedshort")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::UNSIGNED_SHORT);
-  if (typeName == "unsignedlong")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::UNSIGNED_LONG);
-  if (typeName == "unsignedchar")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::UNSIGNED_CHAR);
-  if (typeName == "signedint")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::SIGNED_INT);
-  if (typeName == "signedshort")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::SIGNED_SHORT);
-  if (typeName == "signedlong")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::SIGNED_LONG);
-  if (typeName == "signedchar")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::SIGNED_CHAR);
 
   return nullptr;
 }
@@ -218,14 +203,10 @@ bool TypeCheckingListener::canConvertToString(const std::shared_ptr<Type>& type)
     return true;
   }
 
-  // string type can be converted to string
+  // any primitive type can be converted to string
   auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
   if (primitiveType) {
-    // allow both string and char to be converted to string
-    if (primitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING ||
-        primitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::CHAR) {
-      return true;
-    }
+    return true;
   }
 
   // type with $toString method can be converted to string
@@ -233,7 +214,9 @@ bool TypeCheckingListener::canConvertToString(const std::shared_ptr<Type>& type)
 }
 
 bool TypeCheckingListener::areTypesCompatible(const std::shared_ptr<Type>& sourceType,
-                                              const std::shared_ptr<Type>& targetType) {
+                                              const std::shared_ptr<Type>& targetType,
+                                              antlr4::ParserRuleContext* sourceCtx,
+                                              antlr4::ParserRuleContext* targetCtx) {
   // same types are always compatible
   if (sourceType->equals(targetType)) {
     return true;
@@ -243,6 +226,7 @@ bool TypeCheckingListener::areTypesCompatible(const std::shared_ptr<Type>& sourc
   auto targetPrimitive = std::dynamic_pointer_cast<PrimitiveType>(targetType);
   if (targetPrimitive && targetPrimitive->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING &&
       canConvertToString(sourceType)) {
+    expectingStringConversion.insert(static_cast<antlr4::ParserRuleContext*>(targetCtx));
     return true;
   }
 
@@ -352,7 +336,7 @@ void TypeCheckingListener::checkArgumentCompatibility(const std::vector<std::sha
     auto paramType = parameterTypes[i];
     auto argType = argumentTypes[i];
 
-    if (!areTypesCompatible(argType, paramType)) {
+    if (!areTypesCompatible(argType, paramType, exprList->expression()[i], exprList->expression()[i])) {
       errorReporter.reportError(ErrorType::TYPE_MISMATCH, exprList->expression()[i]->getStart()->getLine(),
                                 exprList->expression()[i]->getStart()->getCharPositionInLine(),
                                 "Incompatible argument type for parameter " + std::to_string(i + 1) + " of function '" +
@@ -487,8 +471,6 @@ void TypeCheckingListener::exitLiteral(cgullParser::LiteralContext* ctx) {
     literalType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::FLOAT);
   } else if (ctx->STRING_LITERAL()) {
     literalType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::STRING);
-  } else if (ctx->CHAR_LITERAL()) {
-    literalType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::CHAR);
   } else if (ctx->BOOLEAN_TRUE() || ctx->BOOLEAN_FALSE()) {
     literalType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::BOOLEAN);
   } else if (ctx->NULLPTR_LITERAL()) {
@@ -812,7 +794,7 @@ void TypeCheckingListener::exitAssignment_statement(cgullParser::Assignment_stat
                               "Cannot determine type of expression");
     return;
   }
-  if (!areTypesCompatible(valueType, targetType)) {
+  if (!areTypesCompatible(valueType, targetType, ctx->expression(), ctx)) {
     std::string errorMessage = "Cannot assign value of type " + valueType->toString() + " to " + targetDescription;
 
     // For index expressions, include the variable name in the error message
@@ -857,7 +839,7 @@ void TypeCheckingListener::exitVariable_declaration(cgullParser::Variable_declar
     return;
   }
 
-  if (!areTypesCompatible(initType, declaredType)) {
+  if (!areTypesCompatible(initType, declaredType, ctx->expression(), ctx)) {
     errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->expression()->getStart()->getLine(),
                               ctx->expression()->getStart()->getCharPositionInLine(),
                               "Cannot initialize variable of type " + declaredType->toString() +
@@ -1020,7 +1002,7 @@ void TypeCheckingListener::exitBase_expression(cgullParser::Base_expressionConte
     setExpressionType(ctx, getExpressionType(ctx->unary_expression()));
   } else if (ctx->allocate_expression()) {
     setExpressionType(ctx, getExpressionType(ctx->allocate_expression()));
-  } else if (ctx->children.size() >= 3) {
+  } else if (ctx->base_expression(0) && ctx->base_expression(1)) {
     auto left = getExpressionType(ctx->base_expression(0));
     auto right = getExpressionType(ctx->base_expression(1));
 
@@ -1036,28 +1018,43 @@ void TypeCheckingListener::exitBase_expression(cgullParser::Base_expressionConte
 
       // handle string concatenation with the + operator
       if (op == "+") {
-        // check if either operand is a string or can be converted to a string
-        bool leftIsString = false;
-        bool rightIsString = false;
+        // check if either operand is a string
+        bool leftCanConvert = false;
+        bool rightCanConvert = false;
 
         auto leftPrimitive = std::dynamic_pointer_cast<PrimitiveType>(left);
         if (leftPrimitive && leftPrimitive->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING) {
-          leftIsString = true;
-        } else {
-          leftIsString = canConvertToString(left);
+          leftCanConvert = true;
         }
 
         auto rightPrimitive = std::dynamic_pointer_cast<PrimitiveType>(right);
         if (rightPrimitive && rightPrimitive->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING) {
-          rightIsString = true;
-        } else {
-          rightIsString = canConvertToString(right);
+          rightCanConvert = true;
         }
 
-        if (leftIsString || rightIsString) {
-          // if either operand is a string or can be converted to a string, the result is a string
-          setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::STRING));
-          return;
+        if (leftCanConvert || rightCanConvert) {
+          std::cout << "String concatenation: " << left->toString() << " + " << right->toString() << std::endl;
+          // if either operand is a string, check if the other can be converted
+          if (leftCanConvert && !rightCanConvert) {
+            rightCanConvert = canConvertToString(right);
+            if (rightCanConvert) {
+              // mark right side for conversion
+              expectingStringConversion.insert(ctx->base_expression(1));
+            }
+          }
+          if (rightCanConvert && !leftCanConvert) {
+            leftCanConvert = canConvertToString(left);
+            if (leftCanConvert) {
+              // mark left side for conversion
+              expectingStringConversion.insert(ctx->base_expression(0));
+            }
+          }
+
+          // only if at least one is a string and the other can be converted
+          if (leftCanConvert && rightCanConvert) {
+            setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::STRING));
+            return;
+          }
         }
       }
 
@@ -1182,7 +1179,7 @@ void TypeCheckingListener::exitAllocate_struct(cgullParser::Allocate_structConte
       for (size_t i = 0; i < parameters.size(); i++) {
         auto paramType = parameters[i];
         auto expectedType = constructor->parameters[i]->dataType;
-        if (!areTypesCompatible(paramType, expectedType)) {
+        if (!areTypesCompatible(paramType, expectedType, ctx->expression_list()->expression()[i], ctx)) {
           errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
                                     ctx->getStart()->getCharPositionInLine(),
                                     "Cannot pass parameter of type " + paramType->toString() +
@@ -1224,11 +1221,12 @@ void TypeCheckingListener::exitUnary_expression(cgullParser::Unary_expressionCon
   // handle unary +, -
   if (ctx->PLUS_OP() || ctx->MINUS_OP()) {
     auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(operandType);
-    if (!primitiveType || !primitiveType->isNumeric()) {
+    if (!primitiveType || !primitiveType->isNumeric() ||
+        primitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::BOOLEAN) {
       errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
                                 ctx->getStart()->getCharPositionInLine(),
                                 "Unary operator " + std::string(1, ctx->getText()[0]) +
-                                    " requires numeric operand, got " + operandType->toString());
+                                    " requires numeric non-boolean operand, got " + operandType->toString());
       setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::INT));
     } else {
       setExpressionType(ctx, operandType);
@@ -1267,7 +1265,8 @@ void TypeCheckingListener::exitUnary_expression(cgullParser::Unary_expressionCon
   // handle increment/decrement operators (++, --)
   else if (ctx->INCREMENT_OP() || ctx->DECREMENT_OP()) {
     auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(operandType);
-    if (!primitiveType || !primitiveType->isNumeric()) {
+    if (!primitiveType || !primitiveType->isNumeric() ||
+        primitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::BOOLEAN) {
       errorReporter.reportError(
           ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(), ctx->getStart()->getCharPositionInLine(),
           "Increment/decrement operator requires numeric operand, got " + operandType->toString());
@@ -1348,10 +1347,10 @@ void TypeCheckingListener::exitIf_expression(cgullParser::If_expressionContext* 
   if (trueType->equals(falseType)) {
     // if same type, use that type
     setExpressionType(ctx, trueType);
-  } else if (areTypesCompatible(trueType, falseType)) {
+  } else if (areTypesCompatible(trueType, falseType, ctx->base_expression(1), ctx->base_expression(2))) {
     // if true type can be converted to false type
     setExpressionType(ctx, falseType);
-  } else if (areTypesCompatible(falseType, trueType)) {
+  } else if (areTypesCompatible(falseType, trueType, ctx->base_expression(2), ctx->base_expression(1))) {
     // if false type can be converted to true type
     setExpressionType(ctx, trueType);
   } else {
@@ -1426,7 +1425,8 @@ void TypeCheckingListener::exitDestructuring_statement(cgullParser::Destructurin
                                 "Cannot determine type of destructuring item " + std::to_string(i));
       continue;
     }
-    if (!areTypesCompatible(itemType, tupleType->elementTypes[i])) {
+    if (!areTypesCompatible(itemType, tupleType->elementTypes[i], ctx->destructuring_list()->destructuring_item(i),
+                            ctx)) {
       errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
                                 ctx->getStart()->getCharPositionInLine(),
                                 "Destructuring item " + std::to_string(i) + " has incompatible type");
