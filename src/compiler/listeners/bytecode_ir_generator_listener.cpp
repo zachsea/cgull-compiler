@@ -236,35 +236,35 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
       auto modInstruction = std::make_shared<IRRawInstruction>("" + prefix + "rem");
       currentFunction->instructions.push_back(modInstruction);
     } else if (ctx->BITWISE_LEFT_SHIFT_OP()) {
-      if (prefix == "i" || prefix == "l") {
+      if (prefix == "i") {
         auto shiftLeftInstruction = std::make_shared<IRRawInstruction>("" + prefix + "shl");
         currentFunction->instructions.push_back(shiftLeftInstruction);
       } else {
         throw std::runtime_error("Unsupported shift left operation for type: " + primitiveType->toString());
       }
     } else if (ctx->BITWISE_RIGHT_SHIFT_OP()) {
-      if (prefix == "i" || prefix == "l") {
+      if (prefix == "i") {
         auto shiftRightInstruction = std::make_shared<IRRawInstruction>("" + prefix + "shr");
         currentFunction->instructions.push_back(shiftRightInstruction);
       } else {
         throw std::runtime_error("Unsupported shift right operation for type: " + primitiveType->toString());
       }
     } else if (ctx->BITWISE_AND_OP()) {
-      if (prefix == "i" || prefix == "l") {
+      if (prefix == "i") {
         auto bitwiseAndInstruction = std::make_shared<IRRawInstruction>("" + prefix + "and");
         currentFunction->instructions.push_back(bitwiseAndInstruction);
       } else {
         throw std::runtime_error("Unsupported bitwise and operation for type: " + primitiveType->toString());
       }
     } else if (ctx->BITWISE_OR_OP()) {
-      if (prefix == "i" || prefix == "l") {
+      if (prefix == "i") {
         auto bitwiseOrInstruction = std::make_shared<IRRawInstruction>("" + prefix + "or");
         currentFunction->instructions.push_back(bitwiseOrInstruction);
       } else {
         throw std::runtime_error("Unsupported bitwise or operation for type: " + primitiveType->toString());
       }
     } else if (ctx->BITWISE_XOR_OP()) {
-      if (prefix == "i" || prefix == "l") {
+      if (prefix == "i") {
         auto bitwiseXorInstruction = std::make_shared<IRRawInstruction>("" + prefix + "xor");
         currentFunction->instructions.push_back(bitwiseXorInstruction);
       } else {
