@@ -68,7 +68,7 @@ goto fail
 @rem Setup the command line
 
 set CLASSPATH=%APP_HOME%\lib\antlr4-4.10.1.jar;%APP_HOME%\lib\ST4-4.3.3.jar;%APP_HOME%\lib\antlr-runtime-3.5.3.jar;%APP_HOME%\lib\org.abego.treelayout.core-1.0.3.jar;%APP_HOME%\lib\javax.json-1.0.4.jar;%APP_HOME%\lib\annotations-13.0.jar;%APP_HOME%\lib\kotlin-stdlib-common-1.6.10.jar
-set MODULE_PATH=%APP_HOME%\lib\jasm-0.7.0.jar;%APP_HOME%\lib\kotlin-stdlib-jdk8-1.6.10.jar;%APP_HOME%\lib\asm-9.3.jar;%APP_HOME%\lib\jcommander-1.75.jar;%APP_HOME%\lib\antlr4-runtime-4.10.1.jar;%APP_HOME%\lib\icu4j-69.1.jar;%APP_HOME%\lib\kotlin-stdlib-jdk7-1.6.10.jar;%APP_HOME%\lib\kotlin-stdlib-1.6.10.jar
+set MODULE_PATH=%APP_HOME%\lib\jasm-0.8.0-SNAPSHOT.jar;%APP_HOME%\lib\kotlin-stdlib-jdk8-1.6.10.jar;%APP_HOME%\lib\asm-9.3.jar;%APP_HOME%\lib\jcommander-1.75.jar;%APP_HOME%\lib\antlr4-runtime-4.10.1.jar;%APP_HOME%\lib\icu4j-69.1.jar;%APP_HOME%\lib\kotlin-stdlib-jdk7-1.6.10.jar;%APP_HOME%\lib\kotlin-stdlib-1.6.10.jar
 
 @rem Execute jasm
 "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %JASM_OPTS%  -classpath "%CLASSPATH%" --module-path "%MODULE_PATH%" --module com.roscopeco.jasm/com.roscopeco.jasm.tool.Jasm %*
