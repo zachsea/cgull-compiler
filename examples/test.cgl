@@ -13,5 +13,9 @@ fn main() {
   Point p = Point(1, 2, Weird(3.0, ptr));
   println(p.w.z);
   println(*p.w.p);
+  p.w.z = 4.0;
+  println(p.w.z);
+  *p.w.p = 11;
+  println(*p.w.p);
   return;
 }

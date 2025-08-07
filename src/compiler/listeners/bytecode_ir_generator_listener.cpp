@@ -862,15 +862,28 @@ void BytecodeIRGeneratorListener::exitAssignment_statement(cgullParser::Assignme
   } else if (ctx->variable() && ctx->expression()) {
     auto scope = getCurrentScope(ctx);
     auto variable = ctx->variable();
+    auto type = expressionTypes[variable];
 
     if (variable->field_access()) {
-      // TODO
-    } else if (variable->IDENTIFIER()) {
-      std::string identifier = variable->IDENTIFIER()->getText();
-      auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(scope->resolve(identifier));
-
-      if (varSymbol) {
-        auto type = varSymbol->dataType;
+      auto fieldAccess = variable->field_access();
+      auto lastField = fieldAccess->field(fieldAccess->field().size() - 1);
+      auto lastStruct = fieldAccess->field(fieldAccess->field().size() - 2);
+      auto structType = expressionTypes[lastStruct];
+      auto userDefinedType = std::dynamic_pointer_cast<UserDefinedType>(structType);
+      if (userDefinedType) {
+        auto structSymbol = userDefinedType->getTypeSymbol();
+        auto fieldTypeSymbol =
+            std::dynamic_pointer_cast<VariableSymbol>(structSymbol->scope->resolve(lastField->IDENTIFIER()->getText()));
+        if (fieldTypeSymbol) {
+          auto putFieldInst =
+              std::make_shared<IRRawInstruction>("putfield " + structSymbol->name + "." + fieldTypeSymbol->name + " " +
+                                                 BytecodeCompiler::typeToJVMType(fieldTypeSymbol->dataType));
+          currentFunction->instructions.push_back(putFieldInst);
+        }
+      }
+    } else {
+      auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(scope->resolve(variable->IDENTIFIER()->getText()));
+      if (!type) {
         auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
         auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
         auto arrayType = std::dynamic_pointer_cast<ArrayType>(type);
@@ -904,13 +917,13 @@ void BytecodeIRGeneratorListener::exitAssignment_statement(cgullParser::Assignme
           auto storeInst = std::make_shared<IRRawInstruction>(storeInstruction);
           currentFunction->instructions.push_back(storeInst);
         }
+      } else if (ctx->index_expression()) {
+        auto scope = getCurrentScope(ctx);
+        auto type = expressionTypes[ctx->index_expression()];
+        auto rawInstruction = std::make_shared<IRRawInstruction>(getArrayOperationInstruction(type, true));
+        currentFunction->instructions.push_back(rawInstruction);
       }
     }
-  } else if (ctx->index_expression()) {
-    auto scope = getCurrentScope(ctx);
-    auto type = expressionTypes[ctx->index_expression()];
-    auto rawInstruction = std::make_shared<IRRawInstruction>(getArrayOperationInstruction(type, true));
-    currentFunction->instructions.push_back(rawInstruction);
   }
 }
 
@@ -1694,9 +1707,7 @@ void BytecodeIRGeneratorListener::enterField_access(cgullParser::Field_accessCon
   }
 }
 
-void BytecodeIRGeneratorListener::exitField_access(cgullParser::Field_accessContext* ctx) {
-  lastFieldType = nullptr;
-}
+void BytecodeIRGeneratorListener::exitField_access(cgullParser::Field_accessContext* ctx) { lastFieldType = nullptr; }
 
 void BytecodeIRGeneratorListener::exitField(cgullParser::FieldContext* ctx) {
   auto parent = dynamic_cast<cgullParser::Field_accessContext*>(ctx->parent);
@@ -1720,14 +1731,23 @@ void BytecodeIRGeneratorListener::exitField(cgullParser::FieldContext* ctx) {
   }
   // take appropriate action based on last field type loaded...
   auto userDefinedType = std::dynamic_pointer_cast<UserDefinedType>(lastFieldType);
+  auto assignmentContext = dynamic_cast<cgullParser::Assignment_statementContext*>(ctx->parent->parent->parent);
+  auto parentFieldAccess = dynamic_cast<cgullParser::Field_accessContext*>(ctx->parent);
+  if (assignmentContext && parentFieldAccess) {
+    auto lastField = parentFieldAccess->field(parentFieldAccess->field().size() - 1);
+    if (ctx == lastField) {
+      return;
+    }
+  }
   if (userDefinedType) {
     // already type checked, just load the field
     auto structSymbol = userDefinedType->getTypeSymbol();
-    auto fieldTypeSymbol = std::dynamic_pointer_cast<VariableSymbol>(structSymbol->scope->resolve(ctx->IDENTIFIER()->getText()));
+    auto fieldTypeSymbol =
+        std::dynamic_pointer_cast<VariableSymbol>(structSymbol->scope->resolve(ctx->IDENTIFIER()->getText()));
     auto fieldType = fieldTypeSymbol->dataType;
     std::string className = structSymbol->name;
     auto getField = std::make_shared<IRRawInstruction>("getfield " + className + "." + ctx->IDENTIFIER()->getText() +
-                                                        " " + BytecodeCompiler::typeToJVMType(fieldType));
+                                                       " " + BytecodeCompiler::typeToJVMType(fieldType));
     currentFunction->instructions.push_back(getField);
     if (isDereferenceContexts[ctx]) {
       generateDereference(ctx);
@@ -1771,7 +1791,7 @@ void BytecodeIRGeneratorListener::generateDereference(antlr4::ParserRuleContext*
     }
     std::string retType = BytecodeCompiler::typeToJVMType(derefType);
     auto invokeInst = std::make_shared<IRRawInstruction>("invokevirtual " + irClass->name + "." +
-                                                        valueMethod->getMangledName() + "() " + retType);
+                                                         valueMethod->getMangledName() + "() " + retType);
     currentFunction->instructions.push_back(invokeInst);
   } else {
     throw std::runtime_error("Invalid dereferenceable: " + ctx->getText());
