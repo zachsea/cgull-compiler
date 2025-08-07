@@ -1002,7 +1002,7 @@ void TypeCheckingListener::exitBase_expression(cgullParser::Base_expressionConte
     setExpressionType(ctx, getExpressionType(ctx->unary_expression()));
   } else if (ctx->allocate_expression()) {
     setExpressionType(ctx, getExpressionType(ctx->allocate_expression()));
-  } else if (ctx->children.size() >= 3) {
+  } else if (ctx->base_expression(0) && ctx->base_expression(1)) {
     auto left = getExpressionType(ctx->base_expression(0));
     auto right = getExpressionType(ctx->base_expression(1));
 
@@ -1019,29 +1019,39 @@ void TypeCheckingListener::exitBase_expression(cgullParser::Base_expressionConte
       // handle string concatenation with the + operator
       if (op == "+") {
         // check if either operand is a string
-        bool leftIsString = false;
-        bool rightIsString = false;
+        bool leftCanConvert = false;
+        bool rightCanConvert = false;
 
         auto leftPrimitive = std::dynamic_pointer_cast<PrimitiveType>(left);
         if (leftPrimitive && leftPrimitive->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING) {
-          leftIsString = true;
+          leftCanConvert = true;
         }
 
         auto rightPrimitive = std::dynamic_pointer_cast<PrimitiveType>(right);
         if (rightPrimitive && rightPrimitive->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING) {
-          rightIsString = true;
+          rightCanConvert = true;
         }
 
-        if (leftIsString || rightIsString) {
+        if (leftCanConvert || rightCanConvert) {
+          std::cout << "String concatenation: " << left->toString() << " + " << right->toString() << std::endl;
           // if either operand is a string, check if the other can be converted
-          if (leftIsString && !rightIsString) {
-            rightIsString = canConvertToString(right);
-          } else if (rightIsString && !leftIsString) {
-            leftIsString = canConvertToString(left);
+          if (leftCanConvert && !rightCanConvert) {
+            rightCanConvert = canConvertToString(right);
+            if (rightCanConvert) {
+              // mark right side for conversion
+              expectingStringConversion.insert(ctx->base_expression(1));
+            }
+          }
+          if (rightCanConvert && !leftCanConvert) {
+            leftCanConvert = canConvertToString(left);
+            if (leftCanConvert) {
+              // mark left side for conversion
+              expectingStringConversion.insert(ctx->base_expression(0));
+            }
           }
 
           // only if at least one is a string and the other can be converted
-          if (leftIsString && rightIsString) {
+          if (leftCanConvert && rightCanConvert) {
             setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::STRING));
             return;
           }

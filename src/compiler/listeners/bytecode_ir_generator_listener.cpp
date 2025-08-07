@@ -552,6 +552,7 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
       currentFunction->instructions.push_back(endLabelInstruction);
     }
   }
+  generateStringConversion(ctx);
 }
 
 void BytecodeIRGeneratorListener::enterVariable_declaration(cgullParser::Variable_declarationContext* ctx) {
