@@ -151,6 +151,7 @@ private:
   virtual void enterField_access(cgullParser::Field_accessContext* ctx) override;
   virtual void exitField_access(cgullParser::Field_accessContext* ctx) override;
 
+  virtual void enterField(cgullParser::FieldContext* ctx) override;
   virtual void exitField(cgullParser::FieldContext* ctx) override;
 };
 
