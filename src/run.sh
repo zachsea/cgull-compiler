@@ -1,6 +1,5 @@
 #! /bin/sh
 make
-mkdir -p ./out
 ./build/cgull "$@"
 # only run assembler if there's no arguments besides the file name and no error
 RESULT=$?

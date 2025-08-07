@@ -9,6 +9,7 @@
 #include <cgullListener.h>
 #include <cgullParser.h>
 #include <cgullVisitor.h>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -154,6 +155,13 @@ int main(int argc, char* argv[]) {
     return 1;
   }
   std::cout << "Bytecode generation completed successfully!" << std::endl;
+
+  try {
+    std::filesystem::create_directory("out");
+  } catch (const std::filesystem::filesystem_error& e) {
+    std::cerr << "Failed to create output directory: " << e.what() << std::endl;
+    return 1;
+  }
 
   // for now, we only have a main class
   std::ofstream outputFile("out/Main.jasm");
