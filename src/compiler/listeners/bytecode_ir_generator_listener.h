@@ -67,6 +67,8 @@ private:
   std::string getLoadInstruction(const std::shared_ptr<PrimitiveType>& primitiveType);
   std::string getStoreInstruction(const std::shared_ptr<PrimitiveType>& primitiveType);
   void handleLogicalExpression(cgullParser::Base_expressionContext* ctx);
+  void convertPrimitiveToPrimitive(const std::shared_ptr<PrimitiveType>& fromType,
+                                   const std::shared_ptr<PrimitiveType>& toType);
 
   virtual void enterProgram(cgullParser::ProgramContext* ctx) override;
   virtual void exitProgram(cgullParser::ProgramContext* ctx) override;
@@ -114,6 +116,8 @@ private:
   virtual void enterFor_statement(cgullParser::For_statementContext* ctx) override;
 
   virtual void enterInfinite_loop_statement(cgullParser::Infinite_loop_statementContext* ctx) override;
+
+  virtual void exitCast_expression(cgullParser::Cast_expressionContext* ctx) override;
 };
 
 #endif // BYTECODE_IR_GENERATOR_LISTENER_H

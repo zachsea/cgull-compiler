@@ -102,22 +102,26 @@ void BytecodeCompiler::generateInstruction(std::basic_ostream<char>& out,
 // to be continued in HW5
 void BytecodeCompiler::generateCallInstruction(std::basic_ostream<char>& out,
                                                const std::shared_ptr<IRCallInstruction>& instruction) {
-  if (instruction->function->name == "println") {
+  if (instruction->function->name == "print" || instruction->function->name == "println") {
     // getstatic already added in enterFunction_call
     auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(instruction->function->parameters[0]->dataType);
     if (primitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING) {
-      out << "invokevirtual java/io/PrintStream.println(java/lang/String)V\n";
+      out << "invokevirtual java/io/PrintStream." << instruction->function->name << "(java/lang/String)V\n";
     } else {
       // we need to call its toString first, or for primitives we can piggyback still
     }
     return;
-  } else if (instruction->function->name == "readline") {
+  } else if (instruction->function->name == "readline" || instruction->function->name == "read") {
     // this doesnt take any arguments, so we can just put all the related instructions here
     out << "new java/util/Scanner\n";
     out << "dup\n";
     out << "getstatic java/lang/System.in java/io/InputStream\n";
     out << "invokespecial java/util/Scanner.<init>(java/io/InputStream)V\n";
-    out << "invokevirtual java/util/Scanner.nextLine()java/lang/String\n";
+    if (instruction->function->name == "readline") {
+      out << "invokevirtual java/util/Scanner.nextLine()java/lang/String\n";
+    } else {
+      out << "invokevirtual java/util/Scanner.next()java/lang/String\n";
+    }
     return;
   }
   out << "invokevirtual " << instruction->function->getMangledName() << "(";

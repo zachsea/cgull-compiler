@@ -1,4 +1,5 @@
 #include "bytecode_ir_generator_listener.h"
+#include "type_checking_listener.h"
 
 BytecodeIRGeneratorListener::BytecodeIRGeneratorListener(
     ErrorReporter& errorReporter, std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes,
@@ -123,8 +124,8 @@ void BytecodeIRGeneratorListener::enterFunction_call(cgullParser::Function_callC
   if (scope) {
     auto functionSymbol = scope->resolve(ctx->IDENTIFIER()->getText());
     auto calledFunction = std::dynamic_pointer_cast<FunctionSymbol>(functionSymbol);
-    if (calledFunction->name == "println") {
-      // special case for println, we need to add a raw instruction
+    if (calledFunction->name == "print" || calledFunction->name == "println") {
+      // special case for print/println, we need to add a raw instruction
       auto rawInstruction = std::make_shared<IRRawInstruction>("getstatic java/lang/System.out java/io/PrintStream");
       currentFunction->instructions.push_back(rawInstruction);
     }
@@ -1194,5 +1195,93 @@ void BytecodeIRGeneratorListener::handleLogicalExpression(cgullParser::Base_expr
 
   if (rightExpr) {
     parentExpressionMap[rightExpr] = ctx;
+  }
+}
+
+void BytecodeIRGeneratorListener::exitCast_expression(cgullParser::Cast_expressionContext* ctx) {
+  auto castType = std::dynamic_pointer_cast<PrimitiveType>(
+      TypeCheckingListener::resolvePrimitiveType(ctx->primitive_type()->getText()));
+  std::shared_ptr<PrimitiveType> currentType;
+
+  // if its an expression, it will already be resolved on the stack
+  // if its an identifier, we need to load the value from the variable
+  if (ctx->IDENTIFIER()) {
+    // load the value from the variable
+    auto scope = getCurrentScope(ctx);
+    auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(scope->resolve(ctx->IDENTIFIER()->getText()));
+    auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(varSymbol->dataType);
+    auto loadInst = std::make_shared<IRRawInstruction>(getLoadInstruction(primitiveType) + " " +
+                                                       std::to_string(varSymbol->localIndex));
+    currentFunction->instructions.push_back(loadInst);
+    currentType = primitiveType;
+  } else {
+    currentType = std::dynamic_pointer_cast<PrimitiveType>(expressionTypes[ctx->expression()]);
+  }
+
+  std::cout << "casting from " << currentType->toString() << " to " << castType->toString() << std::endl;
+  convertPrimitiveToPrimitive(currentType, castType);
+}
+
+void BytecodeIRGeneratorListener::convertPrimitiveToPrimitive(const std::shared_ptr<PrimitiveType>& fromType,
+                                                              const std::shared_ptr<PrimitiveType>& toType) {
+  if (fromType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::INT ||
+      fromType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::BOOLEAN) {
+    switch (toType->getPrimitiveKind()) {
+    case PrimitiveType::PrimitiveKind::FLOAT: {
+      auto rawInstruction = std::make_shared<IRRawInstruction>("i2f");
+      currentFunction->instructions.push_back(rawInstruction);
+      break;
+    }
+    case PrimitiveType::PrimitiveKind::INT:
+    case PrimitiveType::PrimitiveKind::STRING:
+    case PrimitiveType::PrimitiveKind::BOOLEAN:
+      // string conversion is already handled elsewhere
+      // booleans are the same as ints in jvm
+      break;
+    default:
+      throw std::runtime_error("Unsupported conversion from int to " + toType->toString());
+    }
+  } else if (fromType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::FLOAT) {
+    switch (toType->getPrimitiveKind()) {
+    case PrimitiveType::PrimitiveKind::BOOLEAN:
+    case PrimitiveType::PrimitiveKind::INT: {
+      auto rawInstruction = std::make_shared<IRRawInstruction>("f2i");
+      currentFunction->instructions.push_back(rawInstruction);
+      break;
+    }
+    case PrimitiveType::PrimitiveKind::FLOAT:
+    case PrimitiveType::PrimitiveKind::STRING:
+      break;
+    default:
+      throw std::runtime_error("Unsupported conversion from float to " + toType->toString());
+    }
+  } else if (fromType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING) {
+    switch (toType->getPrimitiveKind()) {
+    case PrimitiveType::PrimitiveKind::INT: {
+      // call Int.parseInt
+      auto rawInstruction =
+          std::make_shared<IRRawInstruction>("invokestatic java/lang/Integer.parseInt (java/lang/String)I");
+      currentFunction->instructions.push_back(rawInstruction);
+      break;
+    }
+    case PrimitiveType::PrimitiveKind::FLOAT: {
+      // call Float.parseFloat
+      auto rawInstruction =
+          std::make_shared<IRRawInstruction>("invokestatic java/lang/Float.parseFloat (java/lang/String)F");
+      currentFunction->instructions.push_back(rawInstruction);
+      break;
+    }
+    case PrimitiveType::PrimitiveKind::BOOLEAN: {
+      // call Boolean.parseBoolean
+      auto rawInstruction =
+          std::make_shared<IRRawInstruction>("invokestatic java/lang/Boolean.parseBoolean (java/lang/String)Z");
+      currentFunction->instructions.push_back(rawInstruction);
+      break;
+    }
+    case PrimitiveType::PrimitiveKind::STRING:
+      break;
+    default:
+      throw std::runtime_error("Unsupported conversion from string to " + toType->toString());
+    }
   }
 }

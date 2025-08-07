@@ -18,6 +18,8 @@ public:
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> getExpressionTypes() const;
   std::unordered_set<antlr4::ParserRuleContext*> getExpectingStringConversion() const;
 
+  static std::shared_ptr<Type> resolvePrimitiveType(const std::string& typeName);
+
 private:
   ErrorReporter& errorReporter;
   std::shared_ptr<Scope> currentScope;
@@ -30,7 +32,6 @@ private:
 
   // helper methods
   std::shared_ptr<Type> resolveType(cgullParser::TypeContext* typeCtx);
-  std::shared_ptr<Type> resolvePrimitiveType(const std::string& typeName);
   bool areTypesCompatible(const std::shared_ptr<Type>& sourceType, const std::shared_ptr<Type>& targetType,
                           antlr4::ParserRuleContext* sourceCtx = nullptr,
                           antlr4::ParserRuleContext* targetCtx = nullptr);

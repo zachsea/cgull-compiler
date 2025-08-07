@@ -3,7 +3,7 @@
  * Prints a pyramid of stars.
  */
 
-fn main() -> int {
+fn main() {
   int height;
   string input;
 
@@ -24,8 +24,6 @@ fn main() -> int {
 
       println("");
   }
-
-  return 0;
 }
 
 /* expected output, given the input "5":
