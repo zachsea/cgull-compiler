@@ -1,0 +1,113 @@
+/* Example #1 - Dynamic Array
+ * Below is what a very primitive implementation of a dynamic array
+ * would look like in cgull. It is not a perfect implementation.
+ * This sample covers a large set of features not limited to:
+ * Generics, interfaces, functions, structs (access blocks, destructor,
+ * operator overloading), memory management (allocation, deallocation),
+ * exception handling, implicit conversions, fixed-sized arrays, and more.
+ *
+ * See other examples for more granular examples of the features.
+ */
+
+// A generic interface for a dynamic array
+interface IDynamicArray<T> {
+  fn size() -> int;
+  fn push_back(T value); // specifying void is optional
+}
+
+// A generic struct implementing the IDynamicArray interface
+struct Vector<T> : IDynamicArray<T> {
+  // members may be prefixed with access modifiers public (redundant) or private
+  // or they can be placed in a block with the access modifier
+  private {
+    int size = 0;
+    int capacity = 0;
+    T* data = allocate T[1];
+
+    fn resize(int new_capacity) {
+      T* new_data = allocate T[new_capacity];
+      for (int i = 0; i < size; i++) {
+        new_data[i] = data[i];
+      }
+      deallocate[] data;
+      data = new_data;
+      capacity = new_capacity;
+    }
+  }
+
+  fn size() -> int {
+    return size;
+  }
+
+  fn push_back(T v) {
+    if (size == capacity) {
+      // ternary
+      resize(capacity * 2 if capacity > 0 else 1);
+    }
+    data[size++] = v;
+  }
+
+  // overrides
+
+  // corresponds to object[index]
+  fn $operator[](int index) -> T {
+    if (index < 0 || index >= size) {
+      throw exception<out_of_bounds>("Index out of bounds");
+    }
+    return data[index];
+  }
+
+  // corresponds to object[index] = value
+  fn $operator[](int index, T value) -> void {
+    if (index < 0 || index >= size) {
+      throw exception<out_of_bounds>("Index out of bounds");
+    }
+    data[index] = value;
+  }
+
+  // defaults to memory address
+  fn $toString() -> string {
+    string result = "[";
+    for (int i = 0; i < size; i++) {
+      result += data[i].$toString();
+      if (i < size - 1) {
+        result += ", ";
+      }
+    }
+    result += "]";
+    return result;
+  }
+
+  fn $destruct() {
+    deallocate[] data;
+    data = nullptr;
+    size = 0;
+    capacity = 0;
+  }
+}
+
+fn main() -> int {
+  // both are stack allocated
+  IDynamicArray<int> vec = Vector<int>();
+  Vector<int> vec2 = Vector<int>();
+  for (int i = 0; i < 10; i++) {
+    vec.push_back(i);
+    vec2.push_back(i * 2);
+  }
+  // $toString will be called implicitly since a string is expected
+  println(vec);
+  println(vec2);
+
+  try {
+    println(vec[10]); // out of bounds
+  } handle (exception<out_of_bounds> e) {
+    println(e); // $toString called implicitly, .message also works
+  }
+  // return 0 is implicit
+}
+
+/* expected output:
+ * [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+ * [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]
+ * Index out of bounds
+ */

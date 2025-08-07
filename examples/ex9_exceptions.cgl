@@ -1,0 +1,56 @@
+/* Example #9 - Exceptions
+ * This example showcases exception handling in cgull, including
+ * try/handle/else/else if/finally statements, and the use of throw.
+ * It demonstrates how to specify types of exceptions and how to handle them.
+ */
+
+fn numberTest(int number) -> bool {
+  // exception name is inside angle brackets, message is the string
+  if (number < 0) {
+    throw exception<negative_number>(number + " is negative number");
+  } else if (number == 0) {
+    throw exception<zero_number>("Zero is not allowed");
+  } else if (number > 100) {
+    throw exception<too_large>(number + " is too large");
+  }
+  return true;
+}
+
+fn main() -> int {
+  println("Provide a number: ");
+  string input = readline();
+  int number = input as int;
+  bool result = false;
+
+  try {
+    result = numberTest(number);
+  } handle (exception<negative_number> e) {
+    println("Negative number exception: " + e.message);
+  } handle (exception<zero_number> e) {
+    println("Zero number exception: " + e.message);
+  } handle (exception<too_large> e) {
+    println("Too large exception: " + e.message);
+  } else {
+    // this block is executed if no exceptions are thrown
+    println("Number is valid: " + number);
+  } finally {
+    println("This will always be executed");
+  }
+
+  try {
+    numberTest(number);
+  } handle (exception e) {
+    // catch all exceptions
+    println("Caught exception: " + e.message);
+  } else if (number == 54) {
+    // this block is executed if no exceptions are thrown and the condition is true
+    println("Number is 54, no exceptions thrown");
+  }
+}
+
+/* expected output description:
+ * Depending on the input, the varous exceptions will be thrown and handled with corresponding outputs.
+ * If the number is valid, it will print "Number is valid: " followed by the number.
+ * Finally, one more try block will repeat the test and print "Caught exception: " if any exception is thrown.
+ * If the number is 54, it will print "Number is 54, no exceptions thrown".
+ */

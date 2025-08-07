@@ -1,0 +1,28 @@
+/* Example #2 - Functions/First-Class Functions
+ * Functions are treated like variables in cgull. They can be passed as arguments
+ * or used in data structures. This example demonstrates how to use functions as
+ * first-class citizens in cgull.
+ */
+
+fn main() -> int {
+  fn<float -> float> square = (float x) { return x * x; };
+  fn<float -> float> cube = (float x) { return x * x * x; };
+  fn<float -> float> square_root = (float x) { return sqrt(x); };
+
+  // common fuction signatures can be placed in an array as they are
+  // essentially just pointers to functions
+  fn<float -> float> fnArr[] = {square, cube, square_root};
+  for (int i = 0; i < 3; i++) {
+    float x = 2.0;
+    float result = fnArr[i](x);
+    println("Result of function " + i + " with input " + x + " is: " + result);
+  }
+
+  return 0;
+}
+
+/* expected output:
+ * Result of function 0 with input 2.0 is: 4.0
+ * Result of function 1 with input 2.0 is: 8.0
+ * Result of function 2 with input 2.0 is: 1.4142135...
+ */

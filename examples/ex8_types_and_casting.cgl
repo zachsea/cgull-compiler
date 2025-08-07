@@ -1,0 +1,53 @@
+/* Example #8 - Types and Casting
+ * This example shows implicit and explicit casting, strongly typed variables,
+ * reinterpretation of bits, and the various primitives available.
+ */
+
+fn main() -> int {
+    bool b = true;
+    char c = 0x41; // ASCII 'A'
+    short s = 0b1111111111111111; // 16-bit signed integer (max value: 32767)
+    int i = 2147483647;
+    long l = 9223372036854775807;
+    float f = '+inf';
+    double d = 3.141592653589793;
+
+    // printing scalar types
+    println("Boolean value: " + b);
+    println("Character value: " + c + " (ASCII: " + (c as int) + ")");
+    println("Short value: " + s);
+    println("Int value: " + i);
+    println("Long value: " + l);
+    println("Float value: " + f);
+    println("Double value: " + d);
+
+    // smaller to larger type implicit casting
+    int char_to_int = c;      // char -> int
+    long int_to_long = i;     // int -> long
+    double float_to_double = f; // float -> double
+
+    println("\nImplicit casting:");
+    println("char to int: " + char_to_int);
+    println("int to long: " + int_to_long);
+    println("float to double: " + float_to_double);
+
+    // Explicit casting with 'as'
+    println("\nExplicit casting with 'as':");
+    char int_to_char = i as char;  // int -> char (potential data loss)
+    int double_to_int = d as int;  // double -> int (truncation)
+
+    println("int to char: " + int_to_char);
+    println("double to int: " + double_to_int);
+
+    // bit reinterpretation with 'bits as'
+    println("\nBit reinterpretation with 'bits as':");
+    char someChar = 'A';
+    float someFloat = someChar as float; // reinterpret bits of char as float
+    return 0;
+}
+
+/* expected output
+ * The expected output may change depending on the lengths of the types on a per system basis, this language
+ * only provides a lower bound on the size of the types, so the output may vary.
+ * The output will show the values of the various types before and after casting.
+ * For the reinterpretation, 'A' is 65 in ASCII (0x41) -> 0x00000041 -> 9.1e-44 in float.

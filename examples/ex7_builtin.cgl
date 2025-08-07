@@ -1,0 +1,65 @@
+/* Example #7 - Built-in
+ * This example showcases the built-in I/O functions in cgull, as well as
+ * the sizeof operator, dynamic memory allocation, and strings/string mainipulation.
+ */
+
+struct Song {
+  string title;
+  unsigned int duration;
+}
+
+struct Playlist {
+  string name;
+  Song* songs;
+  unsigned int count;
+
+  fn $destruct() -> void {
+    deallocate[] songs; // Free allocated memory for songs
+  }
+}
+
+const string SEPARATOR = "------------------------";
+
+fn main() -> int {
+  println("=== Playlist Creator ===");
+
+  print("Enter playlist title: ");
+  string playlistTitle = readline();
+
+  print("How many songs would you like to add? ");
+  string input = readline();
+  int songCount = input as int;
+
+  Playlist playlist = Playlist(playlistTitle, allocate Song[songCount], songCount);
+
+  println("Size of Song struct: " + sizeof(Song) + " bytes");
+  println("Allocated memory for " + songCount + " songs");
+
+  // Add songs to the playlist
+  int totalDuration = 0;
+
+  for (int i = 0; i < songCount; i++) {
+    println("\nSong #" + (i + 1));
+    print("Title: ");
+    playlist.songs[i].title = readline();
+
+    print("Duration (in seconds): ");
+    input = read(); // Read until whitespace
+    playlist.songs[i].duration = input as int;
+
+    totalDuration += playlist.songs[i].duration;
+  }
+
+  // Display the playlist
+  println("\n=== Playlist: " + playlist.name + " ===");
+  println(SEPARATOR);
+
+  for (int i = 0; i < playlist.count; i++) {
+    Song song = playlist.songs[i];
+    println((i + 1) + ". " + song.title + " (" + formatTime(song.duration) + ")");
+  }
+
+  println(SEPARATOR);
+  println("Total songs: " + playlist.count);
+  println("Total duration: " + formatTime(totalDuration));
+}

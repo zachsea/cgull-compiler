@@ -1,0 +1,49 @@
+/* Example #4 - Branching
+ * This example showcases basic if/else if/else statements,
+ * and match (when) statements. It also demonstrates some basic operators
+ * such as logical operators and comaprison operators.
+ */
+
+fn main() -> int {
+  println("Provide a number: ");
+  string input = readline();
+  int number = input as int;
+
+  if (number < 0) {
+    println("Negative number");
+  } else if (number == 0) {
+    println("Zero");
+  } else {
+    string result = when(number) {
+      1 => "One",
+      2 => "Two",
+      3..=5 => "Three to Five", // range operator with inclusive range
+      6..10 => "Six to Nine", // range operator with exclusive range
+      !15..=20 => "Not between 15 and 20", // negation operator
+      _ => {
+        // this is a block expression, multiple statements can be used, must return if its being used as an expression
+        println("You chose a really weird number"); // this should never be reached
+        return "Unknown";
+      }, // trailing comma is optional
+    }
+  }
+  // when used as non-expression
+  when (number) {
+    // block statement
+    9538 => {
+      println("Cool number");
+    },
+    // single statement
+    42491 => println("Test number"),
+    _ => {
+      println("Nothing");
+      return; // optional, as seen in last block
+    }
+  }
+}
+
+/* expected output description:
+ * The output will match the input number, with negative and zero being handled separately.
+ * The match statement will handle the number based on its value, with ranges and negation operators.
+ * The last match statement will print "Test number" for 42491 and "Cool number" for 9538. Otherwise it will print "Nothing".
+ */

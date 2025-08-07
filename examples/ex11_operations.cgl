@@ -1,0 +1,42 @@
+/* Example #11 - Operations
+ * This example showcases operations for pointers (dereferencing, address of),
+ * and miscellaneous bitwise operations (and, or, xor, not).
+ */
+
+fn main() -> int {
+  int* ptr = allocate int(5);
+  int* ptr2 = allocate int;
+  *ptr = 10;
+
+  int stackVar = 10;
+  int* stackPtr = &stackVar;
+  println("Address of stackVar: " + stackPtr);
+
+  println("Value of stackVar: " + *stackPtr);
+  println("Value of ptr: " + *ptr);
+  println("Value of ptr2: " + *ptr2);
+
+  // Bitwise operations (on the pointer addresses)
+  long andResult = (ptr as long) & (ptr2 as long);
+  long orResult = (ptr as long) | (ptr2 as long);
+  long xorResult = (ptr as long) ^ (ptr2 as long);
+  long notResult = ~(ptr as long);
+
+  println("Bitwise actions on the pointer addresses p1 " + ptr + " and p2 " + ptr2);
+  println("Bitwise AND: " + andResult);
+  println("Bitwise OR: " + orResult);
+  println("Bitwise XOR: " + xorResult);
+  println("Bitwise NOT: " + notResult);
+}
+
+/* expected output:
+ * Address of stackVar: <address of stackVar>
+ * Value of stackVar: 10
+ * Value of ptr: 10
+ * Value of ptr2: 0
+ * Bitwise actions on the pointer addresses p1 <address of ptr> and p2 <address of ptr2>
+ * Bitwise AND: <result>
+ * Bitwise OR: <result>
+ * Bitwise XOR: <result>
+ * Bitwise NOT: <result>
+ */
