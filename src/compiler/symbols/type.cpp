@@ -147,7 +147,7 @@ bool PointerType::equals(const std::shared_ptr<Type>& other) const {
 std::string PointerType::toString() const {
   auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(pointeeType);
   if (!primitiveType) {
-    return "UnknownReference";
+    throw std::runtime_error("Unknown primitive kind");
   }
   switch (primitiveType->getPrimitiveKind()) {
   case PrimitiveType::PrimitiveKind::INT:
@@ -161,7 +161,7 @@ std::string PointerType::toString() const {
   case PrimitiveType::PrimitiveKind::VOID:
     return "VoidReference";
   default:
-    return "UnknownReference";
+    throw std::runtime_error("Unknown primitive kind");
   }
 }
 

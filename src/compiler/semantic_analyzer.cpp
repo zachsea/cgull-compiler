@@ -34,6 +34,7 @@ void SemanticAnalyzer::analyze(cgullParser::ProgramContext* programCtx) {
   walker.walk(&typeChecker, programCtx);
   expressionTypes = typeChecker.getExpressionTypes();
   expectingStringConversion = typeChecker.getExpectingStringConversion();
+  resolvedMethodSymbols = typeChecker.getResolvedMethodSymbols();
 
   // FIFTH PASS: check for use before definition errors
   UseBeforeDefinitionListener useBeforeDefListener(errorReporter, scopeMap);
@@ -263,4 +264,9 @@ const std::unordered_set<antlr4::ParserRuleContext*>& SemanticAnalyzer::getExpec
 
 const std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>>& SemanticAnalyzer::getConstructorMap() {
   return constructorMap;
+}
+
+const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<FunctionSymbol>>&
+SemanticAnalyzer::getResolvedMethodSymbols() const {
+  return resolvedMethodSymbols;
 }

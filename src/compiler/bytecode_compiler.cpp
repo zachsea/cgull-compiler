@@ -8,9 +8,11 @@ BytecodeCompiler::BytecodeCompiler(
     std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>> scopeMap,
     std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes,
     std::unordered_set<antlr4::ParserRuleContext*> expectingStringConversion,
-    std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>> constructorMap)
+    std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>> constructorMap,
+    std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<FunctionSymbol>> resolvedMethodSymbols)
     : programCtx(programCtx), scopeMap(scopeMap), expressionTypes(expressionTypes),
-      expectingStringConversion(expectingStringConversion), constructorMap(constructorMap) {}
+      expectingStringConversion(expectingStringConversion), constructorMap(constructorMap),
+      resolvedMethodSymbols(resolvedMethodSymbols) {}
 
 void BytecodeCompiler::compile() {
   // generate wrappers for primitive types as needed
@@ -27,8 +29,8 @@ void BytecodeCompiler::compile() {
   }
 
   // create a listener to generate the IR
-  BytecodeIRGeneratorListener listener(errorReporter, scopeMap, expressionTypes, expectingStringConversion,
-                                       primitiveWrappers, constructorMap);
+  BytecodeIRGeneratorListener listener(errorReporter, scopeMap, expressionTypes, resolvedMethodSymbols,
+                                       expectingStringConversion, primitiveWrappers, constructorMap);
   antlr4::tree::ParseTreeWalker walker;
   walker.walk(&listener, programCtx);
 

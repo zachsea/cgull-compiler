@@ -92,7 +92,7 @@ std::string PrimitiveWrapperGenerator::getClassName(PrimitiveType::PrimitiveKind
   case PrimitiveType::PrimitiveKind::STRING:
     return "StringReference";
   default:
-    return "UnknownReference";
+    throw std::runtime_error("Unknown primitive kind");
   }
 }
 

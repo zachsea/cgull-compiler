@@ -23,6 +23,11 @@ std::unordered_set<antlr4::ParserRuleContext*> TypeCheckingListener::getExpectin
   return expectingStringConversion;
 }
 
+std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<FunctionSymbol>>
+TypeCheckingListener::getResolvedMethodSymbols() const {
+  return resolvedMethodSymbols;
+}
+
 void TypeCheckingListener::setExpressionType(antlr4::ParserRuleContext* ctx, std::shared_ptr<Type> type) {
   expressionTypes[ctx] = type;
 }
@@ -419,6 +424,7 @@ void TypeCheckingListener::exitFunction_call(cgullParser::Function_callContext* 
                                    ctx->getStart()->getLine(), ctx->getStart()->getCharPositionInLine());
 
         setFunctionCallReturnType(ctx, funcSymbol->returnTypes);
+        resolvedMethodSymbols[ctx] = funcSymbol;
       } else {
         errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, ctx->getStart()->getLine(),
                                   ctx->getStart()->getCharPositionInLine(),
@@ -716,7 +722,8 @@ void TypeCheckingListener::exitIndexable(cgullParser::IndexableContext* ctx) {
   if (ctx->IDENTIFIER()) {
     // we need a special case as this could be a struct field access
     auto grandparentCtx = dynamic_cast<cgullParser::FieldContext*>(ctx->parent->parent);
-    auto parentFieldAccessCtx = grandparentCtx ? dynamic_cast<cgullParser::Field_accessContext*>(grandparentCtx->parent) : nullptr;
+    auto parentFieldAccessCtx =
+        grandparentCtx ? dynamic_cast<cgullParser::Field_accessContext*>(grandparentCtx->parent) : nullptr;
     if (parentFieldAccessCtx && parentFieldAccessCtx->field(0) != grandparentCtx) {
       auto fieldAccessIt = fieldAccessContexts.find(parentFieldAccessCtx);
       if (fieldAccessIt != fieldAccessContexts.end()) {
@@ -726,9 +733,9 @@ void TypeCheckingListener::exitIndexable(cgullParser::IndexableContext* ctx) {
         if (fieldType) {
           setExpressionType(ctx, fieldType);
         } else {
-          errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, ctx->getStart()->getLine(),
-                                    ctx->getStart()->getCharPositionInLine(), "Cannot resolve field '" + fieldName +
-                                                                                    "' in type " + fieldAccessIt->second.top()->toString());
+          errorReporter.reportError(
+              ErrorType::UNRESOLVED_REFERENCE, ctx->getStart()->getLine(), ctx->getStart()->getCharPositionInLine(),
+              "Cannot resolve field '" + fieldName + "' in type " + fieldAccessIt->second.top()->toString());
         }
       }
     } else {

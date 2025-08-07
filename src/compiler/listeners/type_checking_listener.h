@@ -17,6 +17,7 @@ public:
   std::shared_ptr<Type> getExpressionType(antlr4::ParserRuleContext* ctx) const;
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> getExpressionTypes() const;
   std::unordered_set<antlr4::ParserRuleContext*> getExpectingStringConversion() const;
+  std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<FunctionSymbol>> getResolvedMethodSymbols() const;
 
   static std::shared_ptr<Type> resolvePrimitiveType(const std::string& typeName);
 
@@ -32,7 +33,7 @@ private:
   const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes;
 
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes;
-
+  std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<FunctionSymbol>> resolvedMethodSymbols;
   std::unordered_set<antlr4::ParserRuleContext*> expectingStringConversion;
 
   // helper methods

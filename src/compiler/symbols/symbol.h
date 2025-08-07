@@ -29,9 +29,12 @@ public:
 
 class VariableSymbol : public Symbol {
 public:
-  VariableSymbol(const std::string& name, int line, int column, std::shared_ptr<Scope> scope, bool isConst = false);
+  VariableSymbol(const std::string& name, int line, int column, std::shared_ptr<Scope> scope, bool isConst = false,
+                 bool isStructMember = false);
   std::shared_ptr<Type> dataType;
+  std::shared_ptr<TypeSymbol> parentStructType;
   bool isConstant;
+  bool isStructMember;
   int localIndex = -1;
 };
 

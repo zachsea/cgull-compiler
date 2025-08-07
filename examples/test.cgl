@@ -1,7 +1,12 @@
 struct Weird {
   float z;
   int* p;
+
+  fn test(int z) -> float {
+    return (z as float) + this.z;
+  }
 }
+
 struct Point {
   int x;
   int y;
@@ -11,11 +16,6 @@ struct Point {
 fn main() {
   int* ptr = allocate int(10);
   Point p = Point(1, 2, Weird(3.0, ptr));
-  println(p.w.z);
-  println(*p.w.p);
-  p.w.z = 4.0;
-  println(p.w.z);
-  *p.w.p = 11;
-  println(*p.w.p);
+  println(p.w.test(10));
   return;
 }

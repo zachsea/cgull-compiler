@@ -6,12 +6,13 @@
 BytecodeIRGeneratorListener::BytecodeIRGeneratorListener(
     ErrorReporter& errorReporter, std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes,
     std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>>& expressionTypes,
+    std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<FunctionSymbol>>& resolvedMethodSymbols,
     std::unordered_set<antlr4::ParserRuleContext*>& expectingStringConversion,
     std::unordered_map<PrimitiveType::PrimitiveKind, std::shared_ptr<IRClass>>& primitiveWrappers,
     std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>>& constructorMap)
     : errorReporter(errorReporter), scopes(scopes), expressionTypes(expressionTypes),
-      expectingStringConversion(expectingStringConversion), primitiveWrappers(primitiveWrappers),
-      constructorMap(constructorMap) {}
+      resolvedMethodSymbols(resolvedMethodSymbols), expectingStringConversion(expectingStringConversion),
+      primitiveWrappers(primitiveWrappers), constructorMap(constructorMap) {}
 
 std::shared_ptr<Scope> BytecodeIRGeneratorListener::getCurrentScope(antlr4::ParserRuleContext* ctx) const {
   auto it = scopes.find(ctx);
@@ -116,6 +117,11 @@ void BytecodeIRGeneratorListener::enterFunction_definition(cgullParser::Function
     currentFunction = std::dynamic_pointer_cast<FunctionSymbol>(functionSymbol);
     auto currentClass = currentClassStack.top();
     currentClass->methods.push_back(currentFunction);
+
+    // if this is a struct method, start local indices at 1 since 'this' is at 0
+    if (currentFunction->isStructMethod) {
+      currentLocalIndex = 1;
+    }
   } else {
     throw std::runtime_error("No scope found for function definition context");
   }
@@ -153,6 +159,11 @@ void BytecodeIRGeneratorListener::enterFunction_call(cgullParser::Function_callC
       currentFunction->instructions.push_back(newInstruction);
       auto dupInstruction = std::make_shared<IRRawInstruction>("dup");
       currentFunction->instructions.push_back(dupInstruction);
+    } else if (lastFieldType) {
+      // is part of a field access, check the struct scope instead
+      auto userDefinedType = std::dynamic_pointer_cast<UserDefinedType>(lastFieldType);
+      functionSymbol = std::dynamic_pointer_cast<FunctionSymbol>(
+          userDefinedType->getTypeSymbol()->scope->resolve(ctx->IDENTIFIER()->getText()));
     } else {
       functionSymbol = std::dynamic_pointer_cast<FunctionSymbol>(scope->resolve(ctx->IDENTIFIER()->getText()));
     }
@@ -178,7 +189,13 @@ void BytecodeIRGeneratorListener::exitFunction_call(cgullParser::Function_callCo
     std::shared_ptr<FunctionSymbol> calledFunction;
     if (constructor != constructorMap.end()) {
       calledFunction = constructor->second;
+    } else if (lastFieldType) {
+      // is part of a field access, check the struct scope instead
+      auto userDefinedType = std::dynamic_pointer_cast<UserDefinedType>(lastFieldType);
+      calledFunction = std::dynamic_pointer_cast<FunctionSymbol>(
+          userDefinedType->getTypeSymbol()->scope->resolve(ctx->IDENTIFIER()->getText()));
     } else {
+      // check scope as normal
       calledFunction = std::dynamic_pointer_cast<FunctionSymbol>(scope->resolve(ctx->IDENTIFIER()->getText()));
     }
     if (!calledFunction) {
@@ -815,6 +832,19 @@ void BytecodeIRGeneratorListener::exitVariable_declaration(cgullParser::Variable
   }
 }
 
+void BytecodeIRGeneratorListener::enterVariable(cgullParser::VariableContext* ctx) {
+  if (ctx->IDENTIFIER()) {
+    auto scope = getCurrentScope(ctx);
+    std::string identifier = ctx->IDENTIFIER()->getText();
+    auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(scope->resolve(identifier));
+
+    if (varSymbol && varSymbol->isStructMember) {
+      auto loadInstruction = std::make_shared<IRRawInstruction>("aload 0");
+      currentFunction->instructions.push_back(loadInstruction);
+    }
+  }
+}
+
 void BytecodeIRGeneratorListener::exitVariable(cgullParser::VariableContext* ctx) {
   // if we're evaluating a variable as a value (not as a target), load its value onto the stack
   if (ctx->IDENTIFIER() && ctx->parent && !dynamic_cast<cgullParser::Assignment_statementContext*>(ctx->parent)) {
@@ -829,16 +859,23 @@ void BytecodeIRGeneratorListener::exitVariable(cgullParser::VariableContext* ctx
       auto arrayType = std::dynamic_pointer_cast<ArrayType>(type);
       auto userDefinedType = std::dynamic_pointer_cast<UserDefinedType>(type);
 
-      if (pointerType || arrayType || userDefinedType) {
-        auto loadInstruction = std::make_shared<IRRawInstruction>("aload " + std::to_string(varSymbol->localIndex));
-        currentFunction->instructions.push_back(loadInstruction);
-      }
+      if (varSymbol->isStructMember) {
+        std::string className = varSymbol->parentStructType->name;
+        auto getField = std::make_shared<IRRawInstruction>(
+            "getfield " + className + "." + ctx->IDENTIFIER()->getText() + " " + BytecodeCompiler::typeToJVMType(type));
+        currentFunction->instructions.push_back(getField);
+      } else {
+        if (pointerType || arrayType || userDefinedType) {
+          auto loadInstruction = std::make_shared<IRRawInstruction>("aload " + std::to_string(varSymbol->localIndex));
+          currentFunction->instructions.push_back(loadInstruction);
+        }
 
-      if (primitiveType) {
-        // load value from the local variable onto the stack
-        auto loadInst = std::make_shared<IRRawInstruction>(getLoadInstruction(primitiveType) + " " +
-                                                           std::to_string(varSymbol->localIndex));
-        currentFunction->instructions.push_back(loadInst);
+        if (primitiveType) {
+          // load value from the local variable onto the stack
+          auto loadInst = std::make_shared<IRRawInstruction>(getLoadInstruction(primitiveType) + " " +
+                                                             std::to_string(varSymbol->localIndex));
+          currentFunction->instructions.push_back(loadInst);
+        }
       }
     }
   }
@@ -1742,17 +1779,25 @@ void BytecodeIRGeneratorListener::exitField(cgullParser::FieldContext* ctx) {
   if (userDefinedType) {
     // already type checked, just load the field
     auto structSymbol = userDefinedType->getTypeSymbol();
-    auto fieldTypeSymbol =
-        std::dynamic_pointer_cast<VariableSymbol>(structSymbol->scope->resolve(ctx->IDENTIFIER()->getText()));
-    auto fieldType = fieldTypeSymbol->dataType;
-    std::string className = structSymbol->name;
-    auto getField = std::make_shared<IRRawInstruction>("getfield " + className + "." + ctx->IDENTIFIER()->getText() +
-                                                       " " + BytecodeCompiler::typeToJVMType(fieldType));
-    currentFunction->instructions.push_back(getField);
+    if (ctx->function_call()) {
+      // method call handled in exitFunction_call
+      lastFieldType = resolvedMethodSymbols[ctx->function_call()]->returnTypes[0];
+    } else {
+      // handle field access
+      auto fieldSymbol =
+          std::dynamic_pointer_cast<VariableSymbol>(structSymbol->scope->resolve(ctx->IDENTIFIER()->getText()));
+      if (!fieldSymbol) {
+        throw std::runtime_error("Field not found: " + ctx->IDENTIFIER()->getText());
+      }
+      auto getFieldInst =
+          std::make_shared<IRRawInstruction>("getfield " + structSymbol->name + "." + fieldSymbol->name + " " +
+                                             BytecodeCompiler::typeToJVMType(fieldSymbol->dataType));
+      currentFunction->instructions.push_back(getFieldInst);
+      lastFieldType = fieldSymbol->dataType;
+    }
     if (isDereferenceContexts[ctx]) {
       generateDereference(ctx);
     }
-    lastFieldType = fieldType;
   } else {
     throw std::runtime_error("Cannot access field of non-struct: " + lastFieldType->toString());
   }

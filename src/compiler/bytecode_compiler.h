@@ -7,11 +7,13 @@
 
 class BytecodeCompiler {
 public:
-  BytecodeCompiler(cgullParser::ProgramContext* programCtx,
-                   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>> scopeMap,
-                   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes,
-                   std::unordered_set<antlr4::ParserRuleContext*> expectingStringConversion,
-                   std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>> constructorMap);
+  BytecodeCompiler(
+      cgullParser::ProgramContext* programCtx,
+      std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>> scopeMap,
+      std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes,
+      std::unordered_set<antlr4::ParserRuleContext*> expectingStringConversion,
+      std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>> constructorMap,
+      std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<FunctionSymbol>> resolvedMethodSymbols);
 
   void compile();
   void generateBytecode(const std::string& outputDir);
@@ -26,6 +28,7 @@ private:
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes;
   std::unordered_set<antlr4::ParserRuleContext*> expectingStringConversion;
   std::vector<std::shared_ptr<IRClass>> generatedClasses;
+  std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<FunctionSymbol>> resolvedMethodSymbols;
   std::unordered_map<PrimitiveType::PrimitiveKind, std::shared_ptr<IRClass>> primitiveWrappers;
   std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>> constructorMap;
 

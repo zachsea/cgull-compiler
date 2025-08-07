@@ -11,6 +11,7 @@ public:
   BytecodeIRGeneratorListener(
       ErrorReporter& errorReporter, std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes,
       std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>>& expressionTypes,
+      std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<FunctionSymbol>>& resolvedMethodSymbols,
       std::unordered_set<antlr4::ParserRuleContext*>& expectingStringConversion,
       std::unordered_map<PrimitiveType::PrimitiveKind, std::shared_ptr<IRClass>>& primitiveWrappers,
       std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>>& constructorMap);
@@ -42,6 +43,7 @@ private:
   ErrorReporter& errorReporter;
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes;
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes;
+  std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<FunctionSymbol>> resolvedMethodSymbols;
   std::unordered_set<antlr4::ParserRuleContext*> expectingStringConversion;
   std::unordered_map<PrimitiveType::PrimitiveKind, std::shared_ptr<IRClass>>& primitiveWrappers;
   std::vector<std::shared_ptr<IRClass>> classes;
@@ -65,7 +67,6 @@ private:
   // store temporary context for field access
   std::shared_ptr<Type> lastFieldType = nullptr;
   std::unordered_map<antlr4::ParserRuleContext*, bool> isDereferenceContexts;
-
 
   std::shared_ptr<Scope> getCurrentScope(antlr4::ParserRuleContext* ctx) const;
   std::string generateLabel();
@@ -101,6 +102,7 @@ private:
   virtual void enterVariable_declaration(cgullParser::Variable_declarationContext* ctx) override;
   virtual void exitVariable_declaration(cgullParser::Variable_declarationContext* ctx) override;
 
+  virtual void enterVariable(cgullParser::VariableContext* ctx) override;
   virtual void exitVariable(cgullParser::VariableContext* ctx) override;
 
   virtual void exitAssignment_statement(cgullParser::Assignment_statementContext* ctx) override;

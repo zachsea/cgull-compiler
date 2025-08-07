@@ -57,9 +57,12 @@ void SymbolCollectionListener::enterVariable_declaration(cgullParser::Variable_d
   createAndRegisterVariableSymbol(identifier, ctx->type(), isConst, line, column);
 }
 void SymbolCollectionListener::exitVariable_declaration(cgullParser::Variable_declarationContext* ctx) {
-  // mark as defined if assigned an expression
-  if (ctx->expression()) {
-    auto varSymbol = currentScope->resolve(ctx->IDENTIFIER()->getText());
+  // mark as defined if assigned an expression, or if its a struct definition as these must be defined
+  auto [inStruct, structType] = isStructScope(currentScope);
+  auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(currentScope->resolve(ctx->IDENTIFIER()->getText()));
+  varSymbol->isStructMember = inStruct;
+  varSymbol->parentStructType = structType;
+  if (ctx->expression() || inStruct) {
     if (varSymbol) {
       varSymbol->isDefined = true;
       varSymbol->definedAtLine = ctx->IDENTIFIER()->getSymbol()->getLine();
@@ -176,15 +179,12 @@ void SymbolCollectionListener::enterFunction_definition(cgullParser::Function_de
 
   // add "this" as a local variable if it's a struct method, not as a parameter
   if (isStructMethod && structSymbol) {
-    // create a pointer type to the struct
-    auto structType = structSymbol->typeRepresentation;
-    auto structPointerType = std::make_shared<PointerType>(structType);
-
     // create the "this" variable (but not as a parameter)
     auto thisVar = std::make_shared<VariableSymbol>("this", line, column, currentScope);
-    thisVar->dataType = structPointerType;
+    thisVar->dataType = structSymbol->typeRepresentation;
     thisVar->definedAtLine = line;
     thisVar->definedAtColumn = column;
+    thisVar->localIndex = 0;
 
     currentScope->add(thisVar);
     functionSymbol->isStructMethod = true; // Mark this as a struct method
