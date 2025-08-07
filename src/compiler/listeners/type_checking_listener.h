@@ -15,6 +15,7 @@ public:
 
   // evaluate the end result of an expression
   std::shared_ptr<Type> getExpressionType(antlr4::ParserRuleContext* ctx) const;
+  std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> getExpressionTypes() const;
 
 private:
   ErrorReporter& errorReporter;

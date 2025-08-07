@@ -37,6 +37,9 @@ private:
 
   virtual void enterFunction_call(cgullParser::Function_callContext* ctx) override;
   virtual void exitFunction_call(cgullParser::Function_callContext* ctx) override;
+
+  virtual void enterBase_expression(cgullParser::Base_expressionContext* ctx) override;
+  virtual void exitBase_expression(cgullParser::Base_expressionContext* ctx) override;
 };
 
 #endif // BYTECODE_IR_GENERATOR_LISTENER_H

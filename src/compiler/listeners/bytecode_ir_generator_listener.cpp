@@ -91,3 +91,31 @@ void BytecodeIRGeneratorListener::exitFunction_call(cgullParser::Function_callCo
     throw std::runtime_error("No scope found for function call context");
   }
 }
+
+void BytecodeIRGeneratorListener::enterBase_expression(cgullParser::Base_expressionContext* ctx) {
+  // handle pushing literals
+  if (ctx->literal()) {
+    std::cout << "Literal: " << ctx->literal()->getText() << "\n";
+    // check what type of literal it is from our expression types
+    auto literal = ctx->literal();
+    auto type = expressionTypes[literal];
+    auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
+    if (primitiveType) {
+      PrimitiveType::PrimitiveKind primitiveKind = primitiveType->getPrimitiveKind();
+      switch (primitiveKind) {
+      case PrimitiveType::PrimitiveKind::INT:
+      case PrimitiveType::PrimitiveKind::STRING: {
+        auto rawInstruction = std::make_shared<IRRawInstruction>("ldc " + literal->getText());
+        currentFunction->instructions.push_back(rawInstruction);
+        break;
+      }
+      default:
+        throw std::runtime_error("Unsupported literal type: " + primitiveType->toString());
+      }
+    } else {
+      throw std::runtime_error("Unsupported literal type: " + type->toString());
+    }
+  }
+}
+
+void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressionContext* ctx) {}

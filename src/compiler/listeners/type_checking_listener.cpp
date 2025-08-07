@@ -15,6 +15,10 @@ std::shared_ptr<Type> TypeCheckingListener::getExpressionType(antlr4::ParserRule
   return nullptr;
 }
 
+std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> TypeCheckingListener::getExpressionTypes() const {
+  return expressionTypes;
+}
+
 void TypeCheckingListener::setExpressionType(antlr4::ParserRuleContext* ctx, std::shared_ptr<Type> type) {
   expressionTypes[ctx] = type;
 }

@@ -113,11 +113,11 @@ void BytecodeCompiler::generateInstruction(std::basic_ostream<char>& out,
   }
 }
 
+// to be continued in HW5
 void BytecodeCompiler::generateCallInstruction(std::basic_ostream<char>& out,
                                                const std::shared_ptr<IRCallInstruction>& instruction) {
   if (instruction->function->name == "println") {
     // getstatic already added in enterFunction_call
-    out << "ldc \"Hello, World\"\n";
     out << "invokevirtual java/io/PrintStream.println(java/lang/String)V\n";
     return;
   }

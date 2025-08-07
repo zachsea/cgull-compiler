@@ -31,6 +31,7 @@ void SemanticAnalyzer::analyze(cgullParser::ProgramContext* programCtx) {
   // FOURTH PASS: validate types and expressions
   TypeCheckingListener typeChecker(errorReporter, scopeMap, globalScope);
   walker.walk(&typeChecker, programCtx);
+  expressionTypes = typeChecker.getExpressionTypes();
 
   // FIFTH PASS: check for use before definition errors
   UseBeforeDefinitionListener useBeforeDefListener(errorReporter, scopeMap);
