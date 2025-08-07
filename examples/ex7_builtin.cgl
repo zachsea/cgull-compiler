@@ -63,3 +63,30 @@ fn main() -> int {
   println("Total songs: " + playlist.count);
   println("Total duration: " + formatTime(totalDuration));
 }
+
+/* expected output
+ * === Playlist Creator ===
+  * Enter playlist title: My Favorite Songs
+  * How many songs would you like to add? 3
+  * Size of Song struct: (depending on the system) bytes
+  * Allocated memory for 3 songs
+  * (input for each song)
+  * Song #1
+  * Title: Song A
+  * Duration (in seconds): 240
+  * Song #2
+  * Title: Song B
+  * Duration (in seconds): 180
+  * Song #3
+  * Title: Song C
+  * Duration (in seconds): 300
+  *
+  * === Playlist: My Favorite Songs ===
+  * ------------------------
+  * 1. Song A (4:00)
+  * 2. Song B (3:00)
+  * 3. Song C (5:00)
+  * ------------------------
+  * Total songs: 3
+  * Total duration: 12:00
+  * /

@@ -42,7 +42,7 @@ struct Vector<T> : IDynamicArray<T> {
   fn push_back(T v) {
     if (size == capacity) {
       // ternary
-      resize(capacity * 2 if capacity > 0 else 1);
+      resize((capacity * 2) if (capacity > 0) else 1);
     }
     data[size++] = v;
   }

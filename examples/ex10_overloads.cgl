@@ -4,57 +4,57 @@
  * and $toString. $destruct can be found in the dynamic array example.
  */
 
-struct 2DVector {
+struct Vector2D {
   float x;
   float y;
 
-  fn $operator+(2DVector* other) -> 2DVector {
-    return 2DVector(this->x + other->x, this->y + other->y);
+  fn $operator+(Vector2D* other) -> Vector2D {
+    return Vector2D(this->x + other->x, this->y + other->y);
   }
 
-  fn $operator-(2DVector* other) -> 2DVector {
-    return 2DVector(this->x - other->x, this->y - other->y);
+  fn $operator-(Vector2D* other) -> Vector2D {
+    return Vector2D(this->x - other->x, this->y - other->y);
   }
 
-  fn $operator*(float scalar) -> 2DVector {
-    return 2DVector(this->x * scalar, this->y * scalar);
+  fn $operator*(float scalar) -> Vector2D {
+    return Vector2D(this->x * scalar, this->y * scalar);
   }
 
-  fn $operator/(float scalar) -> 2DVector {
-    return 2DVector(this->x / scalar, this->y / scalar);
+  fn $operator/(float scalar) -> Vector2D {
+    return Vector2D(this->x / scalar, this->y / scalar);
   }
 
-  fn $operator==(2DVector* other) -> bool {
+  fn $operator==(Vector2D* other) -> bool {
     return this->x == other->x && this->y == other->y;
   }
 
   fn $toString() -> string {
-    return "2DVector(" + this->x + ", " + this->y + ")";
+    return "Vector2D(" + this->x + ", " + this->y + ")";
   }
 }
 
 fn main() -> int {
-  2DVector v1 = 2DVector(1.0, 2.0);
-  2DVector v2 = 2DVector(3.0, 4.0);
+  Vector2D v1 = Vector2D(1.0, 2.0);
+  Vector2D v2 = Vector2D(3.0, 4.0);
 
   // using overloaded operators
-  2DVector sum = v1 + v2;
+  Vector2D sum = v1 + v2;
   // called implicitly, since a string is expected
   println("Sum: " + sum);
 
-  2DVector diff = v1 - v2;
+  Vector2D diff = v1 - v2;
   // can be called explicitly, but not necessary
   println("Difference: " + diff.$toString());
 
   float scalar = 2.0;
-  2DVector scaled = v1 * scalar;
+  Vector2D scaled = v1 * scalar;
   println("Scaled: " + scaled.$toString());
 
   return 0;
 }
 
 /* expected output:
- * Sum: 2DVector(4.0, 6.0)
- * Difference: 2DVector(-2.0, -2.0)
- * Scaled: 2DVector(2.0, 4.0)
+ * Sum: Vector2D(4.0, 6.0)
+ * Difference: Vector2D(-2.0, -2.0)
+ * Scaled: Vector2D(2.0, 4.0)
  */

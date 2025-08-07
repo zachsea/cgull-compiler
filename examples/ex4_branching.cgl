@@ -25,7 +25,7 @@ fn main() -> int {
         println("You chose a really weird number"); // this should never be reached
         return "Unknown";
       }, // trailing comma is optional
-    }
+    };
   }
   // when used as non-expression
   when (number) {

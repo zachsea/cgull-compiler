@@ -360,7 +360,7 @@ See [examples/ex8_types_and_casting.cgl](examples/ex8_types_and_casting.cgl) for
 - `float` - 32-bit floating point number
 - `double` - 64-bit floating point number
 
-No current support for unicode characters, may be added in the future.
+No current support for single unicode characters, may be added in the future.
 
 #### Compound Types
 

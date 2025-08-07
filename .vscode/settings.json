@@ -1,0 +1,9 @@
+{
+  "cmake.sourceDirectory": "${workspaceFolder}/src",
+  "cmake.buildDirectory": "${workspaceFolder}/src/build",
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/src/build/compile_commands.json",
+  "files.associations": {
+    "*.h": "cpp",
+    "sstream": "cpp"
+  },
+}

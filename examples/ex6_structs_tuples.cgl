@@ -37,8 +37,8 @@ fn main() -> int {
   p2.setCoords(3, 4);
 
   // destructuring
-  int x1, y1 = p1.getCoords();
-  int x2, y2 = p2.getCoords();
+  int x1, int y1 = p1.getCoords();
+  int x2, int y2 = p2.getCoords();
   println("p1: " + p1.name + " (" + x1 + ", " + y1 + ")");
   println("p2: " + p2.name + " (" + x2 + ", " + y2 + ")");
 
