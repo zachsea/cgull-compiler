@@ -6,7 +6,7 @@ See the [formal grammar](src/grammar/cgull.g4) for the formal definition of the 
 
 ## Building
 
-Java is required for the antlr generation and JASM for generating bytecode. Both jars are included for convenience.
+Java is required for the ANTLR generation and JASM for generating bytecode. Both jars are included for convenience. If you must source them yourself, 4.13.2 is the expected ANTLR version and [this specific PR of JASM](https://github.com/roscopeco/jasm/pull/60) is the one that works with it (needed for empty package names on classes).
 
 The cmake project requires that the antlr4 cpp runtime be locatable. This has only been tested on macOS through homebrew (as seen by the hints) and should be similar for most Linux package managers, but I will see about making this work on Windows as well (for my own sanity too).
 
@@ -37,7 +37,10 @@ make
 cd ..
 ./build/cgull <source_file> [--lexer | --parser | --semantic]
 # run the assembler and java runtime, if applicable
-# if on windows, use jasm.bat instead of jasm
+# if on windows, use `jasm.bat` instead of `jasm`
+# run the assembler for EVERY .jasm file in the out directory (could do with a loop or something) for example:
 ./thirdparty/jasm/bin/jasm -i out -o out Main.jasm
+./thirdparty/jasm/bin/jasm -i out -o out IntReference.jasm
+./thirdparty/jasm/bin/jasm -i out -o out StringReference.jasm
 java -cp out Main
 ```

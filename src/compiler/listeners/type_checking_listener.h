@@ -69,7 +69,6 @@ private:
 
   void exitCast_expression(cgullParser::Cast_expressionContext* ctx) override;
   void exitDereference_expression(cgullParser::Dereference_expressionContext* ctx) override;
-  void exitReference_expression(cgullParser::Reference_expressionContext* ctx) override;
 
   void exitTuple_expression(cgullParser::Tuple_expressionContext* ctx) override;
 
@@ -80,6 +79,7 @@ private:
 
   void exitUnary_expression(cgullParser::Unary_expressionContext* ctx) override;
   void exitPostfix_expression(cgullParser::Postfix_expressionContext* ctx) override;
+  void exitUnary_statement(cgullParser::Unary_statementContext* ctx) override;
 
   void exitIf_expression(cgullParser::If_expressionContext* ctx) override;
 

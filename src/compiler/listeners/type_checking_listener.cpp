@@ -247,12 +247,6 @@ bool TypeCheckingListener::areTypesCompatible(const std::shared_ptr<Type>& sourc
     sourcePointedType->equals(targetPointedType);
   }
 
-  // numerics can convert to each other
-  auto sourcePrimitive = std::dynamic_pointer_cast<PrimitiveType>(sourceType);
-  if (sourcePrimitive && targetPrimitive) {
-    return sourcePrimitive->isNumeric() && targetPrimitive->isNumeric();
-  }
-
   return false;
 }
 
@@ -938,26 +932,6 @@ void TypeCheckingListener::exitDereference_expression(cgullParser::Dereference_e
   setExpressionType(ctx, pointerType->getPointedType());
 }
 
-void TypeCheckingListener::exitReference_expression(cgullParser::Reference_expressionContext* ctx) {
-  if (!ctx->expression()) {
-    errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
-                              ctx->getStart()->getCharPositionInLine(), "Cannot determine base type for reference");
-  }
-  auto baseType = getExpressionType(ctx->expression());
-  if (!baseType) {
-    errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
-                              ctx->getStart()->getCharPositionInLine(), "Cannot determine base type for reference");
-    setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
-    return;
-  }
-  auto pointerType = std::dynamic_pointer_cast<PointerType>(baseType);
-  if (pointerType) {
-    setExpressionType(ctx, pointerType);
-  } else {
-    setExpressionType(ctx, std::make_shared<PointerType>(baseType));
-  }
-}
-
 void TypeCheckingListener::exitTuple_expression(cgullParser::Tuple_expressionContext* ctx) {
   if (!ctx->expression_list()) {
     setExpressionType(ctx, std::make_shared<TupleType>(std::vector<std::shared_ptr<Type>>{}));
@@ -992,8 +966,6 @@ void TypeCheckingListener::exitBase_expression(cgullParser::Base_expressionConte
     setExpressionType(ctx, getExpressionType(ctx->index_expression()));
   } else if (ctx->dereference_expression()) {
     setExpressionType(ctx, getExpressionType(ctx->dereference_expression()));
-  } else if (ctx->reference_expression()) {
-    setExpressionType(ctx, getExpressionType(ctx->reference_expression()));
   } else if (ctx->cast_expression()) {
     setExpressionType(ctx, getExpressionType(ctx->cast_expression()));
   } else if (ctx->tuple_expression()) {
@@ -1310,6 +1282,14 @@ void TypeCheckingListener::exitPostfix_expression(cgullParser::Postfix_expressio
   }
 
   setExpressionType(ctx, baseType);
+}
+
+void TypeCheckingListener::exitUnary_statement(cgullParser::Unary_statementContext* ctx) {
+  if (ctx->unary_expression()) {
+    setExpressionType(ctx, getExpressionType(ctx->unary_expression()));
+  } else {
+    setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+  }
 }
 
 void TypeCheckingListener::exitIf_expression(cgullParser::If_expressionContext* ctx) {

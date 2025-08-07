@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+class IRClass;
+
 class TypeSymbol;
 
 class Type {
@@ -40,6 +42,7 @@ public:
 
 private:
   PrimitiveKind primitiveKind;
+  const std::shared_ptr<IRClass> wrapperClass;
 };
 
 class UserDefinedType : public Type {

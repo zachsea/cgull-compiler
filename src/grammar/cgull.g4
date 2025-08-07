@@ -13,7 +13,6 @@ base_expression
     | allocate_expression
     | index_expression
     | dereference_expression
-    | reference_expression
     | literal
     | function_call
     | cast_expression
@@ -65,10 +64,6 @@ dereferenceable
     | index_expression
     ;
 
-reference_expression
-    : '&' expression
-    ;
-
 literal
     : NUMBER_LITERAL
     | DECIMAL_LITERAL
@@ -92,7 +87,7 @@ allocate_expression
     ;
 
 allocate_primitive
-    : primitive_type ('(' expression ')')?
+    : primitive_type '(' expression ')'?
     ;
 
 allocate_array
@@ -270,8 +265,7 @@ if_statement
     ;
 
 unary_statement
-    : (INCREMENT_OP | DECREMENT_OP) expression SEMICOLON
-    | postfix_expression SEMICOLON
+    : unary_expression SEMICOLON
     ;
 
 break_statement

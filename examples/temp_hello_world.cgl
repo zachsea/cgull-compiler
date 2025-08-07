@@ -1,5 +1,0 @@
-fn main() {
-  bool b = true;
-  int a = b as int;
-  println(a);
-}
