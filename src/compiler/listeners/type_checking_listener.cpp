@@ -714,12 +714,31 @@ void TypeCheckingListener::exitIndex_expression(cgullParser::Index_expressionCon
 
 void TypeCheckingListener::exitIndexable(cgullParser::IndexableContext* ctx) {
   if (ctx->IDENTIFIER()) {
-    auto varSymbol = currentScope->resolve(ctx->IDENTIFIER()->getSymbol()->getText());
-    if (auto variableSymbol = std::dynamic_pointer_cast<VariableSymbol>(varSymbol)) {
-      setExpressionType(ctx, variableSymbol->dataType);
+    // we need a special case as this could be a struct field access
+    auto grandparentCtx = dynamic_cast<cgullParser::FieldContext*>(ctx->parent->parent);
+    auto parentFieldAccessCtx = grandparentCtx ? dynamic_cast<cgullParser::Field_accessContext*>(grandparentCtx->parent) : nullptr;
+    if (parentFieldAccessCtx && parentFieldAccessCtx->field(0) != grandparentCtx) {
+      auto fieldAccessIt = fieldAccessContexts.find(parentFieldAccessCtx);
+      if (fieldAccessIt != fieldAccessContexts.end()) {
+        // see if this identifier is a field of the struct
+        auto fieldName = ctx->IDENTIFIER()->getSymbol()->getText();
+        auto fieldType = getFieldType(fieldAccessIt->second.top(), fieldName);
+        if (fieldType) {
+          setExpressionType(ctx, fieldType);
+        } else {
+          errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, ctx->getStart()->getLine(),
+                                    ctx->getStart()->getCharPositionInLine(), "Cannot resolve field '" + fieldName +
+                                                                                    "' in type " + fieldAccessIt->second.top()->toString());
+        }
+      }
     } else {
-      errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, ctx->getStart()->getLine(),
-                                ctx->getStart()->getCharPositionInLine(), "Cannot resolve type for indexable");
+      auto varSymbol = currentScope->resolve(ctx->IDENTIFIER()->getSymbol()->getText());
+      if (auto variableSymbol = std::dynamic_pointer_cast<VariableSymbol>(varSymbol)) {
+        setExpressionType(ctx, variableSymbol->dataType);
+      } else {
+        errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, ctx->getStart()->getLine(),
+                                  ctx->getStart()->getCharPositionInLine(), "Cannot resolve type for indexable");
+      }
     }
   } else if (ctx->expression()) {
     setExpressionType(ctx, getExpressionType(ctx->expression()));
