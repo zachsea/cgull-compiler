@@ -4,6 +4,30 @@ This repository (will) contain the code for cgull, ~~a c++-inspired language~~, 
 See the [informal spec](informal_spec.md) for more details on the language (Language Definition - Examples and Semantics assignment).
 See the [formal grammar](src/grammar/cgull.g4) for the formal definition of the language. (Language Definition - Formal Grammar assignment)
 
+## Temporary note for grader
+
+For HW4, the following examples work:
+
+- [ex2_misc1.cgl](examples/ex2_misc1.cgl)
+- [ex4_branching.cgl](examples/ex4_branching.cgl)
+- [ex5_looping.cgl](examples/ex5_looping.cgl)
+- [ex8_types_and_casting.cgl](examples/ex8_types_and_casting.cgl)
+- [ex11_operations.cgl](examples/ex11_operations.cgl)
+- [ex13_misc5.cgl](examples/ex13_misc5.cgl)
+
+Please see the below sections for building, compiling, and assembling the source files.
+I've attempted to make sure there's a high chance the cmake file will also find the ANTLR library for you, but you may need to modify it **especially if you are on Windows.**
+It should describe everything you need to know, but the TL;DR if you are struggling to use the run.sh script for system environment reasons:
+
+- Even though this is a C++ project the compiler targets the JVM.
+- Have Java installed (I used 23.0.2), there are no need to fetch dependencies these are located in the `thirdparty` directory.
+- Use cmake to build the compiler
+- Compile using the produced executable with an example file as an argument
+- Assemble the produced .jasm files with the jasm tool
+- Run the java runtime with the Main class as the argument and the out directory as the classpath
+
+See [Manual Building/Assembling/Running](#manual-buildingassemblingrunning) for more details about specific commands.
+
 ## Building
 
 Java is required for the ANTLR generation and JASM for generating bytecode. Both jars are included for convenience. If you must source them yourself, 4.13.2 is the expected ANTLR version and [this specific PR of JASM](https://github.com/roscopeco/jasm/pull/60) is the one that works with it (needed for empty package names on classes).
@@ -21,7 +45,7 @@ cd src
 ./run.sh <file> [--lexer | --parser | --semantic ]
 ```
 
-## Manual Building/Running
+## Manual Building/Assembling/Running
 
 If you have issues with the bootstrap makefile or run.sh script in general, you can use the following commands to build and run the project manually with cmake.
 

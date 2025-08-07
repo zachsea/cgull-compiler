@@ -1,0 +1,36 @@
+/* Example #13 - Miscellaneous 5
+ * Create for the midway point of the compiler's development.
+ * Shows off if expressions, xor, read(), print(), and explicit casting.
+ * Simple game to guess a number and a xor based on that hidden number.
+ */
+
+fn main() {
+  const int secret = 52; // super super secret
+  int guess = 0;
+  string input;
+
+  println("---Very cool game---");
+  println("I'm thinking of a number between 0 and 100");
+  println("Try to guess it in 5 tries or less");
+  for {
+    print("Guess: ");
+    input = read();
+  } until ((++guess) == 5 || secret == input as int);
+
+  println(if (input as int == secret) "You guessed it!" else "You didn't guess it in 5 tries");
+
+  print("\nWhat is the xor of the secret number and 52?: ");
+
+  println(if (secret ^ 52 == (read()) as int) "You got it right!" else "You got it wrong... :(");
+}
+
+/* expected output:
+ * ---Very cool game---
+ * I'm thinking of a number between 0 and 100
+ * Try to guess it in 5 tries or less
+ * Guess: (input)
+ * [You guessed it! or You didn't guess it in 5 tries]
+ *
+ * What is the xor of the secret number and 52?: (input)
+ * [You got it right! or You got it wrong... :(]
+ */

@@ -144,10 +144,6 @@ int main(int argc, char* argv[]) {
                             semanticAnalyzer.getExpectingStringConversion());
   compiler.compile();
 
-  for (const auto& ctx : semanticAnalyzer.getExpectingStringConversion()) {
-    std::cout << "Expecting string conversion at: " << ctx->toString() << std::endl;
-  }
-
   if (compiler.getErrorReporter().hasErrors()) {
     std::cerr << "Bytecode generation failed with errors." << std::endl;
     compiler.getErrorReporter().displayErrors();

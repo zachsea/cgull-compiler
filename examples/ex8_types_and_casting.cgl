@@ -3,7 +3,7 @@
  * and the various primitives available.
  */
 
-fn main() -> int {
+fn main() {
     bool b = true;
     int i = 2147483647;
     float f = 3.141592653589793;
@@ -13,19 +13,52 @@ fn main() -> int {
     println("Int value: " + i);
     println("Float value: " + f);
 
-    println("\nImplicit casting:");
-
     // Explicit casting with 'as'
-    println("\nExplicit casting with 'as':");
-    int float_to_int = f as int;  // float -> int (truncation)
+    println("\nExplicit casting with 'as':\n");
+    int float_to_int = f as int;
+    int bool_to_int = b as int;
+    int string_to_int = ("123") as int;
+    float int_to_float = i as float;
+    float bool_to_float = b as float;
+    float string_to_float = ("3.14") as float;
+    bool int_to_bool = i as bool;
+    bool float_to_bool = f as bool;
+    bool string_to_bool = ("true") as bool;
+    string int_to_string = i as string;
+    string float_to_string = f as string;
+    string bool_to_string = b as string;
 
+    println("int to float: " + int_to_float);
+    println("int to bool: " + int_to_bool);
+    println("int to string: " + int_to_string);
     println("float to int: " + float_to_int);
-
-    return 0;
+    println("float to bool: " + float_to_bool);
+    println("float to string: " + float_to_string);
+    println("bool to int: " + bool_to_int);
+    println("bool to float: " + bool_to_float);
+    println("bool to string: " + bool_to_string);
+    println("string to int: " + string_to_int);
+    println("string to float: " + string_to_float);
+    println("string to bool: " + string_to_bool);
 }
 
-/* expected output
- * The expected output may change depending on the lengths of the types on a per system basis, this language
- * only provides a lower bound on the size of the types, so the output may vary.
- * The output will show the values of the various types before and after casting.
+/* expected output:
+ * Boolean value: true
+ * Int value: 2147483647
+ * Float value: 3.1415927
+ *
+ * Explicit casting with 'as':
+ *
+ * int to float: 2.1474836E9
+ * int to bool: true
+ * int to string: 2147483647
+ * float to int: 3
+ * float to bool: true
+ * float to string: 3.1415927
+ * bool to int: 1
+ * bool to float: 1.0
+ * bool to string: 1
+ * string to int: 123
+ * string to float: 3.14
+ * string to bool: true
  */
