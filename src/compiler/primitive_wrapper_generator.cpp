@@ -1,4 +1,5 @@
 #include "primitive_wrapper_generator.h"
+#include <stdexcept>
 
 std::shared_ptr<IRClass> PrimitiveWrapperGenerator::generateWrapperClass(PrimitiveType::PrimitiveKind kind) {
   std::string className = getClassName(kind);

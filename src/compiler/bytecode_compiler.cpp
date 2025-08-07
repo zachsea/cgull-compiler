@@ -1,6 +1,7 @@
 #include "bytecode_compiler.h"
 #include "listeners/bytecode_ir_generator_listener.h"
 #include "primitive_wrapper_generator.h"
+#include <filesystem>
 #include <ostream>
 
 BytecodeCompiler::BytecodeCompiler(

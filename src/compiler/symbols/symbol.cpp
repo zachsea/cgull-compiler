@@ -1,4 +1,5 @@
 #include "symbol.h"
+#include <algorithm>
 
 Symbol::Symbol(const std::string& name, SymbolType type, int line, int column, std::shared_ptr<Scope> scope)
     : name(name), type(type), definedAtLine(line), definedAtColumn(column), isDefined(false), scope(scope) {}
