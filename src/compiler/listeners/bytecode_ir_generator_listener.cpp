@@ -7,9 +7,11 @@ BytecodeIRGeneratorListener::BytecodeIRGeneratorListener(
     ErrorReporter& errorReporter, std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes,
     std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>>& expressionTypes,
     std::unordered_set<antlr4::ParserRuleContext*>& expectingStringConversion,
-    std::unordered_map<PrimitiveType::PrimitiveKind, std::shared_ptr<IRClass>>& primitiveWrappers)
+    std::unordered_map<PrimitiveType::PrimitiveKind, std::shared_ptr<IRClass>>& primitiveWrappers,
+    std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>>& constructorMap)
     : errorReporter(errorReporter), scopes(scopes), expressionTypes(expressionTypes),
-      expectingStringConversion(expectingStringConversion), primitiveWrappers(primitiveWrappers) {}
+      expectingStringConversion(expectingStringConversion), primitiveWrappers(primitiveWrappers),
+      constructorMap(constructorMap) {}
 
 std::shared_ptr<Scope> BytecodeIRGeneratorListener::getCurrentScope(antlr4::ParserRuleContext* ctx) const {
   auto it = scopes.find(ctx);
@@ -728,7 +730,12 @@ void BytecodeIRGeneratorListener::enterVariable_declaration(cgullParser::Variabl
   if (scope) {
     std::string identifier = ctx->IDENTIFIER()->getText();
     auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(scope->resolve(identifier));
-
+    // if we're not in a function, this is a struct variable
+    if (!currentFunction) {
+      auto structClass = currentClassStack.top();
+      structClass->variables.push_back(varSymbol);
+      return;
+    }
     if (varSymbol) {
       // assign a local index to this variable
       int localIndex = assignLocalIndex(varSymbol);
@@ -1598,6 +1605,52 @@ void BytecodeIRGeneratorListener::enterIndexable(cgullParser::IndexableContext* 
                                                          std::to_string(varSymbol->localIndex));
       currentFunction->instructions.push_back(loadInst);
     }
+  }
+}
+
+void BytecodeIRGeneratorListener::enterStruct_definition(cgullParser::Struct_definitionContext* ctx) {
+  // create a new class for the struct
+  auto structName = ctx->IDENTIFIER()->getText();
+  auto structClass = std::make_shared<IRClass>();
+  structClass->name = structName;
+  currentClassStack.push(structClass);
+  classes.push_back(structClass);
+}
+
+void BytecodeIRGeneratorListener::exitStruct_definition(cgullParser::Struct_definitionContext* ctx) {
+  // generate the constructor method with all the public fields
+  auto structClass = currentClassStack.top();
+  auto constructor = constructorMap[structClass->name];
+  if (!constructor) {
+    throw std::runtime_error("Constructor not found for struct: " + structClass->name);
+  }
+  constructor->name = "<init>";
+  constructor->parameters = structClass->variables;
+  // create the instructions to putfield for each variable
+  for (int i = 0; i < structClass->variables.size(); i++) {
+    auto variable = std::dynamic_pointer_cast<VariableSymbol>(structClass->variables[i]);
+    if (!variable->isPrivate) {
+      // load based on type
+      if (variable->dataType->getKind() == Type::TypeKind::PRIMITIVE) {
+        auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(variable->dataType);
+        auto loadInst = std::make_shared<IRRawInstruction>(getLoadInstruction(primitiveType) + " " + std::to_string(i));
+        constructor->instructions.push_back(loadInst);
+      } else {
+        auto loadInst = std::make_shared<IRRawInstruction>("aload " + std::to_string(i));
+        constructor->instructions.push_back(loadInst);
+      }
+      // putfield
+      auto putFieldInst = std::make_shared<IRRawInstruction>("putfield " + structClass->name + "." + variable->name +
+                                                             " " + BytecodeCompiler::typeToJVMType(variable->dataType));
+      constructor->instructions.push_back(putFieldInst);
+    }
+  }
+  // return void
+  constructor->returnTypes.push_back(std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+  structClass->methods.push_back(constructor);
+
+  if (!currentClassStack.empty()) {
+    currentClassStack.pop();
   }
 }
 

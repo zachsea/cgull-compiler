@@ -141,7 +141,7 @@ int main(int argc, char* argv[]) {
   }
 
   BytecodeCompiler compiler(tree, semanticAnalyzer.getScopes(), semanticAnalyzer.getExpressionTypes(),
-                            semanticAnalyzer.getExpectingStringConversion());
+                            semanticAnalyzer.getExpectingStringConversion(), semanticAnalyzer.getConstructorMap());
   compiler.compile();
 
   if (compiler.getErrorReporter().hasErrors()) {

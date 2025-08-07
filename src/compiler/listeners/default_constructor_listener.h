@@ -10,9 +10,12 @@ public:
   DefaultConstructorListener(ErrorReporter& errorReporter,
                              const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes);
 
+  std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>> getConstructorMap();
+
 private:
   ErrorReporter& errorReporter;
   const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes;
+  std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>> constructorMap;
 
   void enterStruct_definition(cgullParser::Struct_definitionContext* ctx) override;
 };

@@ -7,9 +7,6 @@ VariableSymbol::VariableSymbol(const std::string& name, int line, int column, st
                                bool isConst)
     : Symbol(name, SymbolType::VARIABLE, line, column, scope), isConstant(isConst) {}
 
-ArraySymbol::ArraySymbol(const std::string& name, int line, int column, std::shared_ptr<Scope> scope)
-    : Symbol(name, SymbolType::ARRAY, line, column, scope) {}
-
 TypeSymbol::TypeSymbol(const std::string& name, int line, int column, std::shared_ptr<Scope> scope)
     : Symbol(name, SymbolType::TYPE, line, column, scope) {}
 

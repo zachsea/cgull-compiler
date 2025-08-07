@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
-enum class SymbolType { VARIABLE, FUNCTION, STRUCT, ARRAY, PARAMETER, TYPE };
+enum class SymbolType { VARIABLE, FUNCTION, STRUCT, PARAMETER, TYPE };
 
 class Scope;
 
@@ -33,12 +33,6 @@ public:
   std::shared_ptr<Type> dataType;
   bool isConstant;
   int localIndex = -1;
-};
-
-class ArraySymbol : public Symbol {
-public:
-  ArraySymbol(const std::string& name, int line, int column, std::shared_ptr<Scope> scope);
-  std::shared_ptr<Type> elementType;
 };
 
 class TypeSymbol : public Symbol {

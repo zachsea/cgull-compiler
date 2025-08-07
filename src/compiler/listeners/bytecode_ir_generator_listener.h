@@ -12,7 +12,8 @@ public:
       ErrorReporter& errorReporter, std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes,
       std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>>& expressionTypes,
       std::unordered_set<antlr4::ParserRuleContext*>& expectingStringConversion,
-      std::unordered_map<PrimitiveType::PrimitiveKind, std::shared_ptr<IRClass>>& primitiveWrappers);
+      std::unordered_map<PrimitiveType::PrimitiveKind, std::shared_ptr<IRClass>>& primitiveWrappers,
+      std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>>& constructorMap);
 
   const std::vector<std::shared_ptr<IRClass>>& getClasses() const;
 
@@ -44,11 +45,11 @@ private:
   std::unordered_set<antlr4::ParserRuleContext*> expectingStringConversion;
   std::unordered_map<PrimitiveType::PrimitiveKind, std::shared_ptr<IRClass>>& primitiveWrappers;
   std::vector<std::shared_ptr<IRClass>> classes;
-  // currently not used, no additional classes besides main currently supported
   std::stack<std::shared_ptr<IRClass>> currentClassStack;
   std::shared_ptr<FunctionSymbol> currentFunction;
   int currentLocalIndex = 0;
   bool dereferenceAssignment = false;
+  std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>>& constructorMap;
 
   int labelCounter = 0;
   std::stack<std::string> breakLabels;
@@ -135,6 +136,9 @@ private:
   virtual void exitAllocate_array(cgullParser::Allocate_arrayContext* ctx) override;
   virtual void enterArray_expression(cgullParser::Array_expressionContext* ctx) override;
   virtual void enterIndexable(cgullParser::IndexableContext* ctx) override;
+
+  virtual void enterStruct_definition(cgullParser::Struct_definitionContext* ctx) override;
+  virtual void exitStruct_definition(cgullParser::Struct_definitionContext* ctx) override;
 };
 
 #endif // BYTECODE_IR_GENERATOR_LISTENER_H

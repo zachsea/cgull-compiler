@@ -17,6 +17,7 @@ public:
   const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& getScopes();
   const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>>& getExpressionTypes();
   const std::unordered_set<antlr4::ParserRuleContext*>& getExpectingStringConversion() const;
+  const std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>>& getConstructorMap();
 
 private:
   ErrorReporter errorReporter;
@@ -24,6 +25,7 @@ private:
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>> scopeMap;
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes;
   std::unordered_set<antlr4::ParserRuleContext*> expectingStringConversion;
+  std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>> constructorMap;
   void addBuiltinFunctions();
 
   // JSON generation
