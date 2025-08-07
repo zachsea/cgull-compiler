@@ -1,0 +1,6 @@
+fn check(int a) -> bool {
+  return a > 0;
+}
+fn main() {
+  println(if check((read()) as int) "positive" else "negative");
+}

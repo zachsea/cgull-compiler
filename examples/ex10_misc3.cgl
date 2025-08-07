@@ -12,9 +12,9 @@ fn countBits(int n) -> int {
   return count;
 }
 
-fn main() -> int {
-  println("Enter a number: ");
-  string input = readline();
+fn main() {
+  print("Enter a number: ");
+  string input = read();
   int n = input as int;
   int result = countBits(n);
   println("Number of 1 bits in " + n + " is: " + result);

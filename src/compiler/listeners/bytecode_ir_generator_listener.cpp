@@ -127,6 +127,13 @@ void BytecodeIRGeneratorListener::exitFunction_definition(cgullParser::Function_
   }
 }
 
+void BytecodeIRGeneratorListener::enterParameter(cgullParser::ParameterContext* ctx) {
+  // assign a local index to the parameter
+  auto parameterSymbol =
+      std::dynamic_pointer_cast<VariableSymbol>(currentFunction->parameters[currentFunction->parameters.size() - 1]);
+  assignLocalIndex(parameterSymbol);
+}
+
 void BytecodeIRGeneratorListener::enterFunction_call(cgullParser::Function_callContext* ctx) {
   // for cases where methods are called on objects, to be filled later HW5
   auto scope = getCurrentScope(ctx);
@@ -809,8 +816,20 @@ void BytecodeIRGeneratorListener::exitAssignment_statement(cgullParser::Assignme
 }
 
 void BytecodeIRGeneratorListener::exitReturn_statement(cgullParser::Return_statementContext* ctx) {
-  // for now, we don't need to evaluate anything since we're just using main
-  auto returnInst = std::make_shared<IRRawInstruction>("return");
+  std::shared_ptr<IRRawInstruction> returnInst;
+  auto returnType = currentFunction->returnTypes[0];
+  auto voidType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID);
+  if (returnType->equals(voidType)) {
+    returnInst = std::make_shared<IRRawInstruction>("return");
+  } else if (returnType->equals(std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::INT))) {
+    returnInst = std::make_shared<IRRawInstruction>("ireturn");
+  } else if (returnType->equals(std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::FLOAT))) {
+    returnInst = std::make_shared<IRRawInstruction>("freturn");
+  } else if (returnType->equals(std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::BOOLEAN))) {
+    returnInst = std::make_shared<IRRawInstruction>("ireturn");
+  } else {
+    returnInst = std::make_shared<IRRawInstruction>("areturn");
+  }
   currentFunction->instructions.push_back(returnInst);
 }
 

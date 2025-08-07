@@ -4,6 +4,10 @@ This repository (will) contain the code for cgull, ~~a c++-inspired language~~, 
 See the [informal spec](informal_spec.md) for more details on the language (Language Definition - Examples and Semantics assignment).
 See the [formal grammar](src/grammar/cgull.g4) for the formal definition of the language. (Language Definition - Formal Grammar assignment)
 
+## Temporary HW5 completion status
+
+- Functions, [ex10_misc3.cgl](examples/ex10_misc3.cgl) now functional
+
 ## Temporary note for grader
 
 For HW4, the following examples work:

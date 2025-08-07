@@ -79,6 +79,8 @@ private:
   virtual void enterFunction_definition(cgullParser::Function_definitionContext* ctx) override;
   virtual void exitFunction_definition(cgullParser::Function_definitionContext* ctx) override;
 
+  virtual void enterParameter(cgullParser::ParameterContext* ctx) override;
+
   virtual void enterFunction_call(cgullParser::Function_callContext* ctx) override;
   virtual void exitFunction_call(cgullParser::Function_callContext* ctx) override;
 

@@ -137,8 +137,9 @@ void BytecodeCompiler::generateClass(std::basic_ostream<char>& out, const std::s
     for (const auto& instruction : method->instructions) {
       generateInstruction(out, instruction);
     }
-    // implicit return for main, if not already specified
-    if (method->name == "main") {
+    // implicit return for void functions, doesn't hurt to be redundant
+    auto voidType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID);
+    if (method->returnTypes[0]->equals(voidType)) {
       out << "return\n";
     }
     out << "}\n";
@@ -185,7 +186,15 @@ void BytecodeCompiler::generateCallInstruction(std::basic_ostream<char>& out,
     }
     return;
   }
-  out << "invokevirtual " << instruction->function->getMangledName() << "(";
+
+  // get the "this" from the function's scope
+  auto thisVar = std::dynamic_pointer_cast<VariableSymbol>(instruction->function->scope->resolve("this"));
+  if (thisVar) {
+    out << "invokevirtual " << thisVar->dataType->toString() << "." << instruction->function->getMangledName() << "(";
+  } else {
+    out << "invokestatic Main." << instruction->function->getMangledName() << "(";
+  }
+
   for (const auto& parameter : instruction->function->parameters) {
     out << typeToJVMType(parameter->dataType);
   }
@@ -193,8 +202,10 @@ void BytecodeCompiler::generateCallInstruction(std::basic_ostream<char>& out,
   // return type
   if (instruction->function->returnTypes.size() > 0) {
     out << typeToJVMType(instruction->function->returnTypes[0]);
+  } else {
+    out << "V";
   }
-  out << "V\n";
+  out << "\n";
 }
 
 std::shared_ptr<IRClass> BytecodeCompiler::getOrCreatePrimitiveWrapper(PrimitiveType::PrimitiveKind kind) {

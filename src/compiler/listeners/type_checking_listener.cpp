@@ -990,8 +990,6 @@ void TypeCheckingListener::exitBase_expression(cgullParser::Base_expressionConte
     setExpressionType(ctx, getExpressionType(ctx->cast_expression()));
   } else if (ctx->tuple_expression()) {
     setExpressionType(ctx, getExpressionType(ctx->tuple_expression()));
-  } else if (ctx->array_expression()) {
-    setExpressionType(ctx, getExpressionType(ctx->array_expression()));
   } else if (ctx->unary_expression()) {
     setExpressionType(ctx, getExpressionType(ctx->unary_expression()));
   } else if (ctx->allocate_expression()) {

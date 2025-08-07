@@ -18,7 +18,6 @@ base_expression
     | cast_expression
     | unary_expression
     | tuple_expression
-    | array_expression
     | variable
     | base_expression (MULT_OP | DIV_OP | MOD_OP) base_expression
     | base_expression (PLUS_OP | MINUS_OP) base_expression

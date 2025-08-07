@@ -137,7 +137,23 @@ bool PointerType::equals(const std::shared_ptr<Type>& other) const {
   return pointeeType->equals(otherPointer->pointeeType);
 }
 
-std::string PointerType::toString() const { return pointeeType->toString() + "*"; }
+std::string PointerType::toString() const {
+  auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(pointeeType);
+  switch (primitiveType->getPrimitiveKind()) {
+  case PrimitiveType::PrimitiveKind::INT:
+    return "IntReference";
+  case PrimitiveType::PrimitiveKind::FLOAT:
+    return "FloatReference";
+  case PrimitiveType::PrimitiveKind::BOOLEAN:
+    return "BoolReference";
+  case PrimitiveType::PrimitiveKind::STRING:
+    return "StringReference";
+  case PrimitiveType::PrimitiveKind::VOID:
+    return "VoidReference";
+  default:
+    return "UnknownReference";
+  }
+}
 
 UnresolvedType::UnresolvedType(const std::string& name) : Type(TypeKind::UNRESOLVED), name(name) {}
 
