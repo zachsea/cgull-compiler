@@ -20,6 +20,16 @@ private:
     std::string endIfLabel;
     std::vector<std::string> conditionLabels;
   };
+  struct SimpleLoopLabels {
+    std::string startLabel;
+    std::string endLabel;
+  };
+  struct ForLoopLabels {
+    std::string startLabel;
+    std::string endLabel;
+    std::string conditionLabel;
+    std::string updateLabel;
+  };
 
   ErrorReporter& errorReporter;
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes;
@@ -34,6 +44,10 @@ private:
   int labelCounter = 0;
   std::stack<std::string> breakLabels;
   std::unordered_map<cgullParser::If_statementContext*, IfLabels> ifLabelsMap;
+  std::unordered_map<cgullParser::Until_statementContext*, SimpleLoopLabels> untilLabelsMap;
+  std::unordered_map<cgullParser::While_statementContext*, SimpleLoopLabels> whileLabelsMap;
+  std::unordered_map<cgullParser::For_statementContext*, ForLoopLabels> forLabelsMap;
+  std::unordered_map<cgullParser::Infinite_loop_statementContext*, SimpleLoopLabels> infiniteLoopLabelsMap;
 
   std::shared_ptr<Scope> getCurrentScope(antlr4::ParserRuleContext* ctx) const;
   std::string generateLabel();
@@ -53,6 +67,7 @@ private:
   virtual void enterFunction_call(cgullParser::Function_callContext* ctx) override;
   virtual void exitFunction_call(cgullParser::Function_callContext* ctx) override;
 
+  virtual void enterExpression(cgullParser::ExpressionContext* ctx) override;
   virtual void exitExpression(cgullParser::ExpressionContext* ctx) override;
 
   virtual void enterBase_expression(cgullParser::Base_expressionContext* ctx) override;
@@ -69,6 +84,8 @@ private:
 
   virtual void exitUnary_expression(cgullParser::Unary_expressionContext* ctx) override;
 
+  virtual void exitUnary_statement(cgullParser::Unary_statementContext* ctx) override;
+
   virtual void exitPostfix_expression(cgullParser::Postfix_expressionContext* ctx) override;
 
   virtual void enterIf_statement(cgullParser::If_statementContext* ctx) override;
@@ -77,6 +94,14 @@ private:
   virtual void exitBranch_block(cgullParser::Branch_blockContext* ctx) override;
 
   virtual void exitBreak_statement(cgullParser::Break_statementContext* ctx) override;
+
+  virtual void enterUntil_statement(cgullParser::Until_statementContext* ctx) override;
+
+  virtual void enterWhile_statement(cgullParser::While_statementContext* ctx) override;
+
+  virtual void enterFor_statement(cgullParser::For_statementContext* ctx) override;
+
+  virtual void enterInfinite_loop_statement(cgullParser::Infinite_loop_statementContext* ctx) override;
 };
 
 #endif // BYTECODE_IR_GENERATOR_LISTENER_H

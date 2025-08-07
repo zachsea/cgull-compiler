@@ -150,51 +150,124 @@ void BytecodeIRGeneratorListener::exitFunction_call(cgullParser::Function_callCo
   }
 }
 
+void BytecodeIRGeneratorListener::enterExpression(cgullParser::ExpressionContext* ctx) {
+  auto parent = ctx->parent;
+  if (!parent)
+    return;
+  auto forStmt = dynamic_cast<cgullParser::For_statementContext*>(parent);
+  // first expression is the condition
+  if (forStmt && forStmt->expression(0) == ctx) {
+    auto it = forLabelsMap.find(forStmt);
+    if (it != forLabelsMap.end()) {
+      auto& labels = it->second;
+      // place label for the condition
+      std::cout << "condition label: " << labels.conditionLabel << std::endl;
+      auto labelInst = std::make_shared<IRRawInstruction>(labels.conditionLabel + ":");
+      currentFunction->instructions.push_back(labelInst);
+    }
+  }
+  if (forStmt && forStmt->expression(1) == ctx) {
+    auto it = forLabelsMap.find(forStmt);
+    if (it != forLabelsMap.end()) {
+      auto& labels = it->second;
+      // place label for the update expr
+      auto labelInst = std::make_shared<IRRawInstruction>(labels.updateLabel + ":");
+      currentFunction->instructions.push_back(labelInst);
+    }
+  }
+}
+
 void BytecodeIRGeneratorListener::exitExpression(cgullParser::ExpressionContext* ctx) {
   generateStringConversion(ctx);
 
   // check if this expression is part of an if statement condition so we can place jumps
   auto parent = ctx->parent;
-  if (parent) {
-    auto ifStmt = dynamic_cast<cgullParser::If_statementContext*>(parent);
-    if (ifStmt) {
-      // only process the first condition
-      if (ifStmt->expression(0) == ctx) {
-        auto it = ifLabelsMap.find(ifStmt);
-        if (it != ifLabelsMap.end()) {
-          auto& labels = it->second;
-          // if condition is false, jump to the first elseif/else branch or end
-          std::string jumpTarget = labels.conditionLabels.size() > 1 ? labels.conditionLabels[1] : labels.endIfLabel;
+  if (!parent)
+    return;
+  auto ifStmt = dynamic_cast<cgullParser::If_statementContext*>(parent);
+  if (ifStmt) {
+    // only process the first condition
+    if (ifStmt->expression(0) == ctx) {
+      auto it = ifLabelsMap.find(ifStmt);
+      if (it != ifLabelsMap.end()) {
+        auto& labels = it->second;
+        // if condition is false, jump to the first elseif/else branch or end
+        std::string jumpTarget = labels.conditionLabels.size() > 1 ? labels.conditionLabels[1] : labels.endIfLabel;
 
-          auto jumpInst = std::make_shared<IRRawInstruction>("ifeq " + jumpTarget);
-          currentFunction->instructions.push_back(jumpInst);
-        }
+        auto jumpInst = std::make_shared<IRRawInstruction>("ifeq " + jumpTarget);
+        currentFunction->instructions.push_back(jumpInst);
       }
-      // handle elseif conditions
-      else {
-        // find which elseif condition this is
-        for (size_t i = 0; i < ifStmt->ELSE_IF().size(); ++i) {
-          // +1 because index 0 is the main if condition
-          if (ifStmt->expression(i + 1) == ctx) {
-            auto it = ifLabelsMap.find(ifStmt);
-            if (it != ifLabelsMap.end()) {
-              auto& labels = it->second;
+    }
+    // handle elseif conditions
+    else {
+      // find which elseif condition this is
+      for (size_t i = 0; i < ifStmt->ELSE_IF().size(); ++i) {
+        // +1 because index 0 is the main if condition
+        if (ifStmt->expression(i + 1) == ctx) {
+          auto it = ifLabelsMap.find(ifStmt);
+          if (it != ifLabelsMap.end()) {
+            auto& labels = it->second;
 
-              // if this elseif condition is false, jump to the next elseif/else branch or end
-              std::string jumpTarget;
-              if (i + 2 < labels.conditionLabels.size()) {
-                jumpTarget = labels.conditionLabels[i + 2];
-              } else {
-                jumpTarget = labels.endIfLabel;
-              }
-
-              auto jumpInst = std::make_shared<IRRawInstruction>("ifeq " + jumpTarget);
-              currentFunction->instructions.push_back(jumpInst);
-              break;
+            // if this elseif condition is false, jump to the next elseif/else branch or end
+            std::string jumpTarget;
+            if (i + 2 < labels.conditionLabels.size()) {
+              jumpTarget = labels.conditionLabels[i + 2];
+            } else {
+              jumpTarget = labels.endIfLabel;
             }
+
+            auto jumpInst = std::make_shared<IRRawInstruction>("ifeq " + jumpTarget);
+            currentFunction->instructions.push_back(jumpInst);
+            break;
           }
         }
       }
+    }
+  }
+  auto whileStmt = dynamic_cast<cgullParser::While_statementContext*>(parent);
+  if (whileStmt) {
+    // place the jump to the end of the loop if the condition is false
+    auto it = whileLabelsMap.find(whileStmt);
+    if (it != whileLabelsMap.end()) {
+      auto& labels = it->second;
+      auto jumpInst = std::make_shared<IRRawInstruction>("ifeq " + labels.endLabel);
+      currentFunction->instructions.push_back(jumpInst);
+    }
+  }
+  auto untilStmt = dynamic_cast<cgullParser::Until_statementContext*>(parent);
+  if (untilStmt) {
+    auto it = untilLabelsMap.find(untilStmt);
+    if (it != untilLabelsMap.end()) {
+      auto& labels = it->second;
+      // this is the expression after the branch block, jump to the top of the loop if the condition is false
+      auto jumpInst = std::make_shared<IRRawInstruction>("ifeq " + labels.startLabel);
+      currentFunction->instructions.push_back(jumpInst);
+    }
+  }
+  auto forStmt = dynamic_cast<cgullParser::For_statementContext*>(parent);
+  if (forStmt && forStmt->expression(0) == ctx) {
+    auto it = forLabelsMap.find(forStmt);
+    if (it != forLabelsMap.end()) {
+      std::cout << "forStmt: " << forStmt->expression(0)->getText() << std::endl;
+      auto& labels = it->second;
+      // jump to the end of the loop if false, this is the condition, otherwise jump to the branch block
+      auto jumpInst = std::make_shared<IRRawInstruction>("ifeq " + labels.endLabel);
+      currentFunction->instructions.push_back(jumpInst);
+      // jump to the branch block
+      auto jumpInst2 = std::make_shared<IRRawInstruction>("goto " + labels.startLabel);
+      currentFunction->instructions.push_back(jumpInst2);
+    }
+  }
+  if (forStmt && forStmt->expression(1) == ctx) {
+    auto it = forLabelsMap.find(forStmt);
+    if (it != forLabelsMap.end()) {
+      auto& labels = it->second;
+      // pop the value from the stack, we aren't using it
+      auto popInst = std::make_shared<IRRawInstruction>("pop");
+      currentFunction->instructions.push_back(popInst);
+      // jump back to the conditional, we're exiting the update expr
+      auto jumpInst = std::make_shared<IRRawInstruction>("goto " + labels.conditionLabel);
+      currentFunction->instructions.push_back(jumpInst);
     }
   }
 }
@@ -668,6 +741,12 @@ void BytecodeIRGeneratorListener::exitUnary_expression(cgullParser::Unary_expres
   }
 }
 
+void BytecodeIRGeneratorListener::exitUnary_statement(cgullParser::Unary_statementContext* ctx) {
+  // remove the evaluation of the expression, it won't be used
+  auto popInst = std::make_shared<IRRawInstruction>("pop");
+  currentFunction->instructions.push_back(popInst);
+}
+
 // needs more work in HW5 for sure
 void BytecodeIRGeneratorListener::exitPostfix_expression(cgullParser::Postfix_expressionContext* ctx) {
   if (ctx->IDENTIFIER()) {
@@ -774,11 +853,58 @@ void BytecodeIRGeneratorListener::enterIf_statement(cgullParser::If_statementCon
 }
 
 void BytecodeIRGeneratorListener::exitBranch_block(cgullParser::Branch_blockContext* ctx) {
-  // if this branch block is part of a loop, handle break labels
-  // loops not yet implemented but will be in the next milestone, so important to consider
   auto parentCtx = ctx->parent;
-  if (dynamic_cast<cgullParser::Loop_statementContext*>(parentCtx) ||
-      dynamic_cast<cgullParser::Until_statementContext*>(parentCtx) ||
+  if (!parentCtx)
+    return;
+
+  // handle loop labels first before break labels
+
+  auto whileStmt = dynamic_cast<cgullParser::While_statementContext*>(parentCtx);
+  if (whileStmt) {
+    auto it = whileLabelsMap.find(whileStmt);
+    if (it != whileLabelsMap.end()) {
+      auto& labels = it->second;
+      // jump to the top of the loop
+      auto jumpInst = std::make_shared<IRRawInstruction>("goto " + labels.startLabel);
+      currentFunction->instructions.push_back(jumpInst);
+      // place the label for the end of the loop
+      auto endLabelInst = std::make_shared<IRRawInstruction>(labels.endLabel + ":");
+      currentFunction->instructions.push_back(endLabelInst);
+      whileLabelsMap.erase(whileStmt);
+    }
+  }
+
+  auto infiniteLoopStmt = dynamic_cast<cgullParser::Infinite_loop_statementContext*>(parentCtx);
+  if (infiniteLoopStmt) {
+    auto it = infiniteLoopLabelsMap.find(infiniteLoopStmt);
+    if (it != infiniteLoopLabelsMap.end()) {
+      auto& labels = it->second;
+      // jump to the top of the loop
+      auto jumpInst = std::make_shared<IRRawInstruction>("goto " + labels.startLabel);
+      currentFunction->instructions.push_back(jumpInst);
+      // breaks already act as our end label for infinite loops
+    }
+  }
+
+  auto forStmt = dynamic_cast<cgullParser::For_statementContext*>(parentCtx);
+  if (forStmt) {
+    auto it = forLabelsMap.find(forStmt);
+    if (it != forLabelsMap.end()) {
+      auto& labels = it->second;
+      // jump to the update expr at the end of the loop
+      auto jumpInst = std::make_shared<IRRawInstruction>("goto " + labels.updateLabel);
+      currentFunction->instructions.push_back(jumpInst);
+      // place the label for the end of the loop
+      auto endLabelInst = std::make_shared<IRRawInstruction>(labels.endLabel + ":");
+      currentFunction->instructions.push_back(endLabelInst);
+    }
+  }
+
+  // untils don't need to do anything at the end of a branch block (handled by the expression following it)
+
+  // handle break labels
+
+  if (dynamic_cast<cgullParser::Until_statementContext*>(parentCtx) ||
       dynamic_cast<cgullParser::While_statementContext*>(parentCtx) ||
       dynamic_cast<cgullParser::For_statementContext*>(parentCtx) ||
       dynamic_cast<cgullParser::Infinite_loop_statementContext*>(parentCtx)) {
@@ -827,6 +953,9 @@ void BytecodeIRGeneratorListener::exitBranch_block(cgullParser::Branch_blockCont
 void BytecodeIRGeneratorListener::enterBranch_block(cgullParser::Branch_blockContext* ctx) {
   // if this branch block is part of a loop, push a new break label
   auto parentCtx = ctx->parent;
+  if (!parentCtx)
+    return;
+
   if (dynamic_cast<cgullParser::Loop_statementContext*>(parentCtx) ||
       dynamic_cast<cgullParser::Until_statementContext*>(parentCtx) ||
       dynamic_cast<cgullParser::While_statementContext*>(parentCtx) ||
@@ -852,6 +981,17 @@ void BytecodeIRGeneratorListener::enterBranch_block(cgullParser::Branch_blockCon
       }
     }
   }
+
+  auto forStmt = dynamic_cast<cgullParser::For_statementContext*>(parentCtx);
+  if (forStmt) {
+    auto it = forLabelsMap.find(forStmt);
+    if (it != forLabelsMap.end()) {
+      auto& labels = it->second;
+      // place label for the start of the block
+      auto labelInst = std::make_shared<IRRawInstruction>(labels.startLabel + ":");
+      currentFunction->instructions.push_back(labelInst);
+    }
+  }
 }
 
 void BytecodeIRGeneratorListener::exitBreak_statement(cgullParser::Break_statementContext* ctx) {
@@ -864,4 +1004,58 @@ void BytecodeIRGeneratorListener::exitBreak_statement(cgullParser::Break_stateme
     // this should already be type checked
     throw std::runtime_error("Break statement outside of loop");
   }
+}
+
+void BytecodeIRGeneratorListener::enterWhile_statement(cgullParser::While_statementContext* ctx) {
+  auto startLabel = generateLabel();
+  auto endLabel = generateLabel();
+
+  SimpleLoopLabels labels;
+  labels.startLabel = startLabel;
+  labels.endLabel = endLabel;
+  whileLabelsMap[ctx] = labels;
+
+  // place start label, since a while loop just starts at the top
+  auto labelInst = std::make_shared<IRRawInstruction>(startLabel + ":");
+  currentFunction->instructions.push_back(labelInst);
+}
+
+void BytecodeIRGeneratorListener::enterInfinite_loop_statement(cgullParser::Infinite_loop_statementContext* ctx) {
+  auto startLabel = generateLabel();
+
+  SimpleLoopLabels labels;
+  labels.startLabel = startLabel;
+  // end label unused, breaks already have an end label
+  infiniteLoopLabelsMap[ctx] = labels;
+
+  // place start label, since an infinite loop just starts at the top
+  auto labelInst = std::make_shared<IRRawInstruction>(startLabel + ":");
+  currentFunction->instructions.push_back(labelInst);
+}
+
+void BytecodeIRGeneratorListener::enterUntil_statement(cgullParser::Until_statementContext* ctx) {
+  auto startLabel = generateLabel();
+
+  SimpleLoopLabels labels;
+  labels.startLabel = startLabel;
+  // end label unused, until fallsthrough if true
+  untilLabelsMap[ctx] = labels;
+
+  // place start label, since an until loop just starts at the top
+  auto labelInst = std::make_shared<IRRawInstruction>(startLabel + ":");
+  currentFunction->instructions.push_back(labelInst);
+}
+
+void BytecodeIRGeneratorListener::enterFor_statement(cgullParser::For_statementContext* ctx) {
+  auto startLabel = generateLabel();
+  auto endLabel = generateLabel();
+  auto conditionLabel = generateLabel();
+  auto updateLabel = generateLabel();
+
+  ForLoopLabels labels;
+  labels.startLabel = startLabel;
+  labels.endLabel = endLabel;
+  labels.conditionLabel = conditionLabel;
+  labels.updateLabel = updateLabel;
+  forLabelsMap[ctx] = labels;
 }
