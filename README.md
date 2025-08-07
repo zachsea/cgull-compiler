@@ -6,18 +6,21 @@ See the [formal grammar](src/grammar/cgull.g4) for the formal definition of the 
 
 ## Temporary HW5 completion status
 
-- Functions, [ex10_misc3.cgl](examples/ex10_misc3.cgl) now functional
+- [ ] Example 1: [ex1_dynamic_array.cgl](examples/ex1_dynamic_array.cgl)
+- [x] Example 2: [ex2_misc1.cgl](examples/ex2_misc1.cgl)
+- [x] Example 3: [ex3_functions.cgl](examples/ex3_functions.cgl)
+- [x] Example 4: [ex4_branching.cgl](examples/ex4_branching.cgl)
+- [x] Example 5: [ex5_looping.cgl](examples/ex5_looping.cgl)
+- [ ] Example 6: [ex6_structs_tuples.cgl](examples/ex6_structs_tuples.cgl)
+- [x] Example 7: [ex7_builtin.cgl](examples/ex7_builtin.cgl)
+- [x] Example 8: [ex8_types_and_casting.cgl](examples/ex8_types_and_casting.cgl)
+- [ ] Example 9: [ex9_misc2.cgl](examples/ex9_misc2.cgl)
+- [x] Example 10: [ex10_misc3.cgl](examples/ex10_misc3.cgl)
+- [x] Example 11: [ex11_operations.cgl](examples/ex11_operations.cgl)
+- [ ] Example 12: [ex12_misc4.cgl](examples/ex12_misc4.cgl)
+- [x] Example 13: [ex13_misc5.cgl](examples/ex13_misc5.cgl)
 
 ## Temporary note for grader
-
-For HW4, the following examples work:
-
-- [ex2_misc1.cgl](examples/ex2_misc1.cgl)
-- [ex4_branching.cgl](examples/ex4_branching.cgl)
-- [ex5_looping.cgl](examples/ex5_looping.cgl)
-- [ex8_types_and_casting.cgl](examples/ex8_types_and_casting.cgl)
-- [ex11_operations.cgl](examples/ex11_operations.cgl)
-- [ex13_misc5.cgl](examples/ex13_misc5.cgl)
 
 Please see the below sections for building, compiling, and assembling the source files.
 I've attempted to make sure there's a high chance the cmake file will also find the ANTLR library for you, but you may need to modify it **especially if you are on Windows.**

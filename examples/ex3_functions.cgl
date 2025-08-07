@@ -1,11 +1,15 @@
 /* Example #3 - Functions
  * This example showcases functions in cgull, particularly
- * their syntax for passing variables, recursion, returns,
- * and multiple return values.
+ * their syntax for passing variables, recursion, and returns.
  */
 
 struct Node {
   string value;
+  Node next;
+}
+
+struct NodePair {
+  Node prev;
   Node next;
 }
 
@@ -18,8 +22,7 @@ fn printNodes(Node head) -> void {
   printNodes(head.next);
 }
 
-// Node, Node is also valid for multiple return values
-fn getNeighbors(Node head, string c) -> (Node, Node) {
+fn getNeighbors(Node head, string c) -> NodePair {
   Node prev = nullptr;
   Node curr = head;
   Node next = nullptr;
@@ -32,10 +35,10 @@ fn getNeighbors(Node head, string c) -> (Node, Node) {
     prev = curr;
     curr = curr.next;
   }
-  return (prev, next);
+  return NodePair(prev, next);
 }
 
-fn main() -> int {
+fn main() {
   // dynamic memory allocation
   Node head = Node("A", nullptr);
   head.next = Node("B", nullptr);
@@ -43,18 +46,16 @@ fn main() -> int {
   head.next.next.next = nullptr;
 
   printNodes(head);
-  Node prev, Node next = getNeighbors(head, "B");
+  NodePair pair = getNeighbors(head, "B");
 
-  println("Previous of B: " + (if (prev != nullptr) prev.value else " "));
-  println("Next of B: " + (if (next != nullptr) next.value else " "));
-
-  return 0;
+  println("Previous of B: " + (if (pair.prev != nullptr) pair.prev.value else " "));
+  println("Next of B: " + (if (pair.next != nullptr) pair.next.value else " "));
 }
 
 /* expected output:
  * A
  * B
  * C
- * Previous: A
- * Next: C
+ * Previous of B: A
+ * Next of B: C
  */

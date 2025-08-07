@@ -623,7 +623,7 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
         }
         return;
       }
-      if (leftPrimitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::INT) {
+      if (leftPrimitiveType && leftPrimitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::INT) {
         if (ctx->EQUAL_OP()) {
           auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmpeq " + trueLabel);
           currentFunction->instructions.push_back(rawInstruction);
@@ -643,7 +643,7 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
           auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmpge " + trueLabel);
           currentFunction->instructions.push_back(rawInstruction);
         }
-      } else if (leftPrimitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::FLOAT) {
+      } else if (leftPrimitiveType && leftPrimitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::FLOAT) {
         auto rawCmpInstruction = std::make_shared<IRRawInstruction>("fcmpg");
         currentFunction->instructions.push_back(rawCmpInstruction);
         if (ctx->EQUAL_OP()) {
@@ -665,8 +665,22 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
           auto rawInstruction = std::make_shared<IRRawInstruction>("ifge " + trueLabel);
           currentFunction->instructions.push_back(rawInstruction);
         }
+      } else if (leftType->getKind() == Type::TypeKind::USER_DEFINED ||
+                 (leftType->getKind() == Type::TypeKind::POINTER &&
+                  std::dynamic_pointer_cast<PointerType>(leftType)->getPointedType()->getKind() ==
+                      Type::TypeKind::USER_DEFINED)) {
+        // for user-defined types, we can only compare with nullptr using == and !=
+        if (ctx->EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_acmpeq " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->NOT_EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_acmpne " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else {
+          throw std::runtime_error("Unsupported comparison operation for type: " + leftType->toString());
+        }
       } else {
-        throw std::runtime_error("Unsupported comparison operation for type: " + leftPrimitiveType->toString());
+        throw std::runtime_error("Unsupported comparison operation for type: " + leftType->toString());
       }
 
       // we didn't jump to trueLabel, so the condition is false
@@ -1918,7 +1932,7 @@ void BytecodeIRGeneratorListener::exitField_access(cgullParser::Field_accessCont
 
 void BytecodeIRGeneratorListener::enterField(cgullParser::FieldContext* ctx) {
   // generate getfield for index_expressions on structs
-  if (ctx->index_expression()) {
+  if (ctx->index_expression() && lastFieldType) {
     auto structSymbol = std::dynamic_pointer_cast<UserDefinedType>(lastFieldType)->getTypeSymbol();
     auto fieldSymbol = std::dynamic_pointer_cast<VariableSymbol>(
         structSymbol->scope->resolve(ctx->index_expression()->indexable()->IDENTIFIER()->getText()));
@@ -1983,6 +1997,11 @@ void BytecodeIRGeneratorListener::exitField(cgullParser::FieldContext* ctx) {
       // method call handled in exitFunction_call
       lastFieldType = resolvedMethodSymbols[ctx->function_call()]->returnTypes[0];
     } else if (ctx->index_expression()) {
+      auto lastField = parentFieldAccess->field(parentFieldAccess->field().size() - 1);
+      if (!(ctx == lastField)) {
+        auto loadInst = std::make_shared<IRRawInstruction>(getArrayOperationInstruction(lastFieldType, false));
+        currentFunction->instructions.push_back(loadInst);
+      }
       lastFieldType = expressionTypes[ctx->index_expression()];
     } else {
       // handle field access

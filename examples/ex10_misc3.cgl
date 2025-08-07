@@ -13,7 +13,7 @@ fn countBits(int n) -> int {
 }
 
 fn main() {
-  print("Enter a number: ");
+  print("Enter a non-negative number: ");
   string input = read();
   int n = input as int;
   int result = countBits(n);

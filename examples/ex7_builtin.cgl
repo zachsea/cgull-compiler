@@ -14,14 +14,16 @@ struct Playlist {
   int count;
 }
 
-
 fn formatTime(int seconds) -> string {
   int minutes = seconds / 60;
   seconds = seconds % 60;
+  if (seconds < 10) {
+    return (minutes as string) + ":0" + (seconds as string);
+  }
   return (minutes as string) + ":" + (seconds as string);
 }
 
-fn main() -> int {
+fn main() {
   const string SEPARATOR = "------------------------";
   println("=== Playlist Creator ===");
 
@@ -40,13 +42,17 @@ fn main() -> int {
   int totalDuration = 0;
 
   for (int i = 0; i < songCount; i++) {
+    string title = "";
+    int duration = 0;
     println("\nSong #" + (i + 1));
     print("Title: ");
-    playlist.songs[i].title = readline();
+    title = readline();
 
     print("Duration (in seconds): ");
     input = read(); // Read until whitespace
-    playlist.songs[i].duration = input as int;
+    duration = input as int;
+
+    playlist.songs[i] = Song(title, duration);
 
     totalDuration = totalDuration + playlist.songs[i].duration;
   }
@@ -69,15 +75,16 @@ fn main() -> int {
  * === Playlist Creator ===
  * Enter playlist title: My Favorite Songs
  * How many songs would you like to add? 3
- * Size of Song struct: (depending on the system) bytes
  * Allocated memory for 3 songs
  * (input for each song)
  * Song #1
  * Title: Song A
  * Duration (in seconds): 240
+ *
  * Song #2
  * Title: Song B
  * Duration (in seconds): 180
+ *
  * Song #3
  * Title: Song C
  * Duration (in seconds): 300
