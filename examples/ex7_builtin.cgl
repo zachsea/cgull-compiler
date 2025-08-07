@@ -10,12 +10,8 @@ struct Song {
 
 struct Playlist {
   string name;
-  Song* songs;
+  Song[] songs;
   int count;
-
-  fn $destruct() -> void {
-    deallocate[] songs; // Free allocated memory for songs
-  }
 }
 
 const string SEPARATOR = "------------------------";

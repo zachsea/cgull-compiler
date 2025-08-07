@@ -19,7 +19,7 @@ struct Game {
 
 fn main() -> int {
   int gameSize = 3;
-  Game* games = allocate Game[gameSize];
+  Game[] games = allocate Game[gameSize];
   games[0] = Game(0, "Balatro", "Rogue-like", 10);
   games[1] = Game(1, "Doom", "FPS", 9);
   games[2] = Game(2, "Half-Life", "FPS", 10);

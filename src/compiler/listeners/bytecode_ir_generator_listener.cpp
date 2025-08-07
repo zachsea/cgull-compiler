@@ -171,7 +171,6 @@ void BytecodeIRGeneratorListener::enterExpression(cgullParser::ExpressionContext
     if (it != forLabelsMap.end()) {
       auto& labels = it->second;
       // place label for the condition
-      std::cout << "condition label: " << labels.conditionLabel << std::endl;
       auto labelInst = std::make_shared<IRRawInstruction>(labels.conditionLabel + ":");
       currentFunction->instructions.push_back(labelInst);
     }
@@ -258,7 +257,6 @@ void BytecodeIRGeneratorListener::exitExpression(cgullParser::ExpressionContext*
   if (forStmt && forStmt->expression(0) == ctx) {
     auto it = forLabelsMap.find(forStmt);
     if (it != forLabelsMap.end()) {
-      std::cout << "forStmt: " << forStmt->expression(0)->getText() << std::endl;
       auto& labels = it->second;
       // jump to the end of the loop if false, this is the condition, otherwise jump to the branch block
       auto jumpInst = std::make_shared<IRRawInstruction>("ifeq " + labels.endLabel);
@@ -312,7 +310,26 @@ void BytecodeIRGeneratorListener::enterBase_expression(cgullParser::Base_express
         }
         break;
       }
-      case PrimitiveType::PrimitiveKind::INT:
+      case PrimitiveType::PrimitiveKind::INT: {
+        // handle NUMBER_LITERAL, HEX_LITERAL, BINARY_LITERAL
+        std::string literalText = literal->getText();
+        if (ctx->literal()->HEX_LITERAL()) {
+          // convert hex literal to int
+          std::stringstream ss;
+          ss << std::hex << literalText;
+          int value;
+          ss >> value;
+          literalText = std::to_string(value);
+        } else if (ctx->literal()->BINARY_LITERAL()) {
+          // cut off the 0b prefix
+          literalText = literalText.substr(2);
+          int value = std::stoi(literalText, nullptr, 2);
+          literalText = std::to_string(value);
+        }
+        auto rawInstruction = std::make_shared<IRRawInstruction>("ldc " + literalText);
+        currentFunction->instructions.push_back(rawInstruction);
+        break;
+      }
       case PrimitiveType::PrimitiveKind::FLOAT:
       case PrimitiveType::PrimitiveKind::STRING: {
         auto rawInstruction = std::make_shared<IRRawInstruction>("ldc " + literal->getText());
@@ -366,7 +383,6 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
       prefix = "i";
       break;
     default:
-      std::cout << "Expression text: " << ctx->getText() << std::endl;
       throw std::runtime_error("Unsupported primitive type for binary operation: " + primitiveType->toString());
     }
 
@@ -1288,7 +1304,6 @@ void BytecodeIRGeneratorListener::exitCast_expression(cgullParser::Cast_expressi
 
   // primitive conversions
   if (auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(currentType)) {
-    std::cout << "casting from " << primitiveType->toString() << " to " << castType->toString() << std::endl;
     convertPrimitiveToPrimitive(primitiveType, castType);
   } else {
     throw std::runtime_error("Unsupported cast from " + currentType->toString() + " to " + castType->toString());

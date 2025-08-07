@@ -21,7 +21,6 @@ void SpecialMethodsListener::enterStruct_definition(cgullParser::Struct_definiti
   validateNoUnsupportedSpecialMethods(structScope, structName, line, column);
 
   validateToStringMethod(structScope, structName, line, column);
-  validateDestructMethod(structScope, structName, line, column);
 }
 
 void SpecialMethodsListener::validateToStringMethod(const std::shared_ptr<Scope>& structScope,
@@ -61,48 +60,12 @@ void SpecialMethodsListener::validateToStringMethod(const std::shared_ptr<Scope>
   }
 }
 
-void SpecialMethodsListener::validateDestructMethod(const std::shared_ptr<Scope>& structScope,
-                                                    const std::string& structName, int line, int column) {
-  auto destructSymbol = structScope->resolve("$destruct_");
-
-  if (!destructSymbol) {
-    // $destruct is optional, so it's fine if it doesn't exist
-    return;
-  }
-
-  if (destructSymbol->type != SymbolType::FUNCTION) {
-    errorReporter.reportError(ErrorType::TYPE_MISMATCH, line, column,
-                              "$destruct in struct " + structName + " must be a method");
-    return;
-  }
-
-  auto funcSymbol = std::dynamic_pointer_cast<FunctionSymbol>(destructSymbol);
-  if (funcSymbol->parameters.size() != 0) {
-    errorReporter.reportError(ErrorType::TYPE_MISMATCH, line, column,
-                              "$destruct in struct " + structName + " must take no parameters");
-  }
-
-  if (funcSymbol->returnTypes.size() != 1) {
-    errorReporter.reportError(ErrorType::TYPE_MISMATCH, line, column,
-                              "$destruct in struct " + structName + " must return void");
-    return;
-  }
-
-  auto returnType = funcSymbol->returnTypes[0];
-  auto primitiveReturnType = std::dynamic_pointer_cast<PrimitiveType>(returnType);
-
-  if (!primitiveReturnType || primitiveReturnType->getPrimitiveKind() != PrimitiveType::PrimitiveKind::VOID) {
-    errorReporter.reportError(ErrorType::TYPE_MISMATCH, line, column,
-                              "$destruct in struct " + structName + " must return void");
-  }
-}
-
 void SpecialMethodsListener::validateNoUnsupportedSpecialMethods(const std::shared_ptr<Scope>& structScope,
                                                                  const std::string& structName, int line, int column) {
   // check all symbols in the struct scope
   for (const auto& [name, symbol] : structScope->symbols) {
     // if it starts with $ and is not one of our supported special methods
-    if (name.size() > 0 && name[0] == '$' && name != "$toString_" && name != "$destruct_") {
+    if (name.size() > 0 && name[0] == '$' && name != "$toString_") {
       errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, line, column,
                                 "unsupported special method '" + name + "' in struct " + structName);
       return;

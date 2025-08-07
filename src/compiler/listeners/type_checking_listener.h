@@ -71,7 +71,7 @@ private:
   void exitDereference_expression(cgullParser::Dereference_expressionContext* ctx) override;
 
   void exitTuple_expression(cgullParser::Tuple_expressionContext* ctx) override;
-
+  void exitArray_expression(cgullParser::Array_expressionContext* ctx) override;
   void exitAllocate_expression(cgullParser::Allocate_expressionContext* ctx) override;
   void exitAllocate_primitive(cgullParser::Allocate_primitiveContext* ctx) override;
   void exitAllocate_array(cgullParser::Allocate_arrayContext* ctx) override;

@@ -18,6 +18,7 @@ base_expression
     | cast_expression
     | unary_expression
     | tuple_expression
+    | array_expression
     | variable
     | base_expression (MULT_OP | DIV_OP | MOD_OP) base_expression
     | base_expression (PLUS_OP | MINUS_OP) base_expression
@@ -67,9 +68,6 @@ dereferenceable
 literal
     : NUMBER_LITERAL
     | DECIMAL_LITERAL
-    | FLOAT_POSINF_LITERAL
-    | FLOAT_NEGINF_LITERAL
-    | FLOAT_NAN_LITERAL
     | STRING_LITERAL
     | HEX_LITERAL
     | BINARY_LITERAL
@@ -91,7 +89,7 @@ allocate_primitive
     ;
 
 allocate_array
-    : type '[' expression ']'
+    : type ('[' expression ']' | array_expression)
     ;
 
 allocate_struct
@@ -120,7 +118,7 @@ field
     ;
 
 cast_expression
-    : (IDENTIFIER | '(' expression ')') (BITS_AS_CAST | AS_CAST) primitive_type
+    : (IDENTIFIER | '(' expression ')') AS_CAST primitive_type
     ;
 
 unary_expression
@@ -136,6 +134,10 @@ postfix_expression
 
 tuple_expression
     : '(' expression_list ')'
+    ;
+
+array_expression
+    : '{' expression_list '}'
     ;
 
 if_expression
@@ -210,7 +212,6 @@ function_level_statement
     | assignment_statement
     | variable_declaration_statement
     | return_statement
-    | deallocate_statement
     | function_call_statement
     | if_statement
     | unary_statement
@@ -250,10 +251,6 @@ infinite_loop_statement
 
 return_statement
     : RETURN expression? SEMICOLON
-    ;
-
-deallocate_statement
-    : DEALLOCATE ARRAY_OP? IDENTIFIER SEMICOLON
     ;
 
 function_call_statement
@@ -332,7 +329,6 @@ BITWISE_RIGHT_SHIFT_OP: '>>' ;
 
 ARRAY_OP: '[]' ;
 
-BITS_AS_CAST: 'bits as' ;
 AS_CAST: 'as' ;
 
 IF: 'if' ;
@@ -358,13 +354,9 @@ CONST: 'const' ;
 PUBLIC: 'public' ;
 PRIVATE: 'private' ;
 ALLOCATE: 'allocate' ;
-DEALLOCATE: 'deallocate' ;
 
 NUMBER_LITERAL: [0-9]+ ;
 DECIMAL_LITERAL: [0-9]+ '.' [0-9]+ ;
-FLOAT_POSINF_LITERAL: '\'+inf\'' ;
-FLOAT_NEGINF_LITERAL: '\'-inf\'' ;
-FLOAT_NAN_LITERAL: 'nan' ;
 // fragments for escaping characters
 STRING_LITERAL: '"' (ESC | ~["\\\r\n])* '"' ;
 fragment ESC: '\\' (["\\/bfnrt] | UNICODE) ;
