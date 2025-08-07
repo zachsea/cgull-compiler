@@ -140,8 +140,10 @@ std::shared_ptr<Type> TypeCheckingListener::resolveType(cgullParser::TypeContext
     return nullptr;
   }
 
-  if (typeCtx->array_suffix()) {
-    baseType = std::make_shared<ArrayType>(baseType);
+  if (typeCtx->array_suffix().size() > 0) {
+    for (auto suffix : typeCtx->array_suffix()) {
+      baseType = std::make_shared<ArrayType>(baseType);
+    }
   }
 
   for (auto child : typeCtx->children) {
@@ -607,8 +609,8 @@ void TypeCheckingListener::exitField(cgullParser::FieldContext* ctx) {
 
 void TypeCheckingListener::exitIndex_expression(cgullParser::Index_expressionContext* ctx) {
   std::shared_ptr<Type> indexType;
-  if (ctx->expression()) {
-    indexType = getExpressionType(ctx->expression());
+  for (auto expr : ctx->expression()) {
+    indexType = getExpressionType(expr);
     if (!indexType) {
       errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, ctx->getStart()->getLine(),
                                 ctx->getStart()->getCharPositionInLine(), "Cannot resolve type for index expression");
@@ -638,19 +640,18 @@ void TypeCheckingListener::exitIndex_expression(cgullParser::Index_expressionCon
   // check if its a tuple type
   auto tupleType = std::dynamic_pointer_cast<TupleType>(baseType);
   if (tupleType) {
-    // check if the index is a valid integer type
-    if (!std::dynamic_pointer_cast<PrimitiveType>(indexType) ||
-        std::dynamic_pointer_cast<PrimitiveType>(indexType)->getPrimitiveKind() != PrimitiveType::PrimitiveKind::INT) {
+    // ensure only one index expression
+    if (ctx->expression().size() != 1) {
       errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
                                 ctx->getStart()->getCharPositionInLine(),
-                                "Index type mismatch: expected int but got " + indexType->toString());
+                                "Expected one index expression but got " + std::to_string(ctx->expression().size()));
       setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
       return;
     }
     // check if the index is in bounds
-    // TODO: maybe allow other expressions here
+    // for now, only allow literal ints
     try {
-      std::stoi(ctx->expression()->getText());
+      std::stoi(ctx->expression(0)->getText());
     } catch (const std::invalid_argument& e) {
       errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
                                 ctx->getStart()->getCharPositionInLine(),
@@ -658,7 +659,7 @@ void TypeCheckingListener::exitIndex_expression(cgullParser::Index_expressionCon
       setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
       return;
     }
-    int index = std::stoi(ctx->expression()->getText());
+    int index = std::stoi(ctx->expression(0)->getText());
     if (index < 0 || index >= tupleType->getElementTypes().size()) {
       errorReporter.reportError(ErrorType::OUT_OF_BOUNDS, ctx->getStart()->getLine(),
                                 ctx->getStart()->getCharPositionInLine(),
@@ -671,7 +672,20 @@ void TypeCheckingListener::exitIndex_expression(cgullParser::Index_expressionCon
   }
 
   if (auto arrayType = std::dynamic_pointer_cast<ArrayType>(baseType)) {
-    setExpressionType(ctx, arrayType->getElementType());
+    // for each expression, access the array type of the current dimension
+    std::shared_ptr<Type> currentType = arrayType;
+    for (auto expr : ctx->expression()) {
+      auto nextArrayType = std::dynamic_pointer_cast<ArrayType>(currentType);
+      if (!nextArrayType) {
+        errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
+                                  ctx->getStart()->getCharPositionInLine(),
+                                  "Cannot index type " + currentType->toString() + " (not an array type)");
+        setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+        return;
+      }
+      currentType = nextArrayType->getElementType();
+    }
+    setExpressionType(ctx, currentType);
     return;
   }
 
@@ -679,7 +693,7 @@ void TypeCheckingListener::exitIndex_expression(cgullParser::Index_expressionCon
   if (!elementType) {
     errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
                               ctx->getStart()->getCharPositionInLine(),
-                              "Cannot index type " + baseType->toString() + " (not an array/pointer type)");
+                              "Cannot index type " + baseType->toString() + " (not an array/tuple type)");
     setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
     return;
   }
@@ -688,74 +702,17 @@ void TypeCheckingListener::exitIndex_expression(cgullParser::Index_expressionCon
 }
 
 void TypeCheckingListener::exitIndexable(cgullParser::IndexableContext* ctx) {
-  std::shared_ptr<Type> indexableType;
-
-  // check if the indexable is a field access (great grandparent)
-  auto fieldAccessCtx = dynamic_cast<cgullParser::Field_accessContext*>(ctx->parent->parent->parent);
-  auto parentAccessIt = fieldAccessContexts.find(fieldAccessCtx);
-  if (fieldAccessCtx && parentAccessIt != fieldAccessContexts.end() && !parentAccessIt->second.empty()) {
-    // if nothing in the stack, treat as a normal indexable
-    auto& parentAccessStack = fieldAccessContexts[fieldAccessCtx];
-
-    auto baseType = parentAccessStack.top();
-    if (ctx->expression()) {
-      auto indexType = getExpressionType(ctx->expression());
-      if (!indexType) {
-        errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, ctx->getStart()->getLine(),
-                                  ctx->getStart()->getCharPositionInLine(), "1Cannot resolve type for indexable");
-        return;
-      }
-      // check if the index is a valid integer type
-      if (!std::dynamic_pointer_cast<PrimitiveType>(indexType) ||
-          std::dynamic_pointer_cast<PrimitiveType>(indexType)->getPrimitiveKind() !=
-              PrimitiveType::PrimitiveKind::INT) {
-        errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
-                                  ctx->getStart()->getCharPositionInLine(),
-                                  "Index type mismatch: expected int but got " + indexType->toString());
-        return;
-      }
-    }
-    if (ctx->IDENTIFIER()) {
-      auto fieldName = ctx->IDENTIFIER()->getSymbol()->getText();
-      indexableType = getFieldType(baseType, fieldName);
-      if (!indexableType) {
-        errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, ctx->getStart()->getLine(),
-                                  ctx->getStart()->getCharPositionInLine(),
-                                  "Cannot resolve field '" + fieldName + "' in type " + baseType->toString());
-        return;
-      }
+  if (ctx->IDENTIFIER()) {
+    auto varSymbol = currentScope->resolve(ctx->IDENTIFIER()->getSymbol()->getText());
+    if (auto variableSymbol = std::dynamic_pointer_cast<VariableSymbol>(varSymbol)) {
+      setExpressionType(ctx, variableSymbol->dataType);
     } else {
       errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, ctx->getStart()->getLine(),
-                                ctx->getStart()->getCharPositionInLine(), "2Cannot resolve type for indexable");
-      return;
+                                ctx->getStart()->getCharPositionInLine(), "Cannot resolve type for indexable");
     }
-  } else {
-    // otherwise, resolve the type normally
-    if (ctx->IDENTIFIER()) {
-      std::string identifier = ctx->IDENTIFIER()->getSymbol()->getText();
-      auto varSymbol = currentScope->resolve(identifier);
-      auto variableSymbol = std::dynamic_pointer_cast<VariableSymbol>(varSymbol);
-      if (variableSymbol) {
-        indexableType = variableSymbol->dataType;
-      } else {
-        errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, ctx->getStart()->getLine(),
-                                  ctx->getStart()->getCharPositionInLine(), "3Cannot resolve type for indexable");
-        return;
-      }
-    } else if (ctx->expression()) {
-      indexableType = getExpressionType(ctx->expression());
-    } else {
-      errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, ctx->getStart()->getLine(),
-                                ctx->getStart()->getCharPositionInLine(), "4Cannot resolve type for indexable");
-      return;
-    }
+  } else if (ctx->expression()) {
+    setExpressionType(ctx, getExpressionType(ctx->expression()));
   }
-  if (!indexableType) {
-    errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, ctx->getStart()->getLine(),
-                              ctx->getStart()->getCharPositionInLine(), "5Cannot resolve type for indexable");
-    return;
-  }
-  setExpressionType(ctx, indexableType);
 }
 
 void TypeCheckingListener::exitAssignment_statement(cgullParser::Assignment_statementContext* ctx) {
@@ -950,27 +907,134 @@ void TypeCheckingListener::exitTuple_expression(cgullParser::Tuple_expressionCon
 }
 
 void TypeCheckingListener::exitArray_expression(cgullParser::Array_expressionContext* ctx) {
-  if (ctx->expression_list()) {
-    auto elementType = getExpressionType(ctx->expression_list()->expression()[0]);
-    if (!elementType) {
-      errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
-                                ctx->getStart()->getCharPositionInLine(), "Cannot determine type for array element");
-    }
+  if (!ctx->expression_list() || ctx->expression_list()->expression().empty()) {
+    errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
+                              ctx->getStart()->getCharPositionInLine(), "Empty array expression");
+    setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+    return;
   }
-  // check if all elements are of the same type
-  auto elementType = getExpressionType(ctx->expression_list()->expression()[0]);
+
+  // get the type of the first element
+  auto firstExpr = ctx->expression_list()->expression()[0];
+  auto elementType = getExpressionType(firstExpr);
+  if (!elementType) {
+    errorReporter.reportError(ErrorType::TYPE_MISMATCH, firstExpr->getStart()->getLine(),
+                              firstExpr->getStart()->getCharPositionInLine(),
+                              "Cannot determine type for array element");
+    setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+    return;
+  }
+
+  // check if this is a nested array expression
+  if (auto nestedArray = dynamic_cast<cgullParser::Array_expressionContext*>(firstExpr)) {
+    // recursively check each element
+    for (auto expr : ctx->expression_list()->expression()) {
+      if (auto nestedExpr = dynamic_cast<cgullParser::Array_expressionContext*>(expr)) {
+        auto nestedType = getExpressionType(nestedExpr);
+        if (!nestedType || !areTypesCompatible(nestedType, elementType, nestedExpr, ctx)) {
+          errorReporter.reportError(ErrorType::TYPE_MISMATCH, expr->getStart()->getLine(),
+                                    expr->getStart()->getCharPositionInLine(), "Nested array type mismatch");
+          setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+          return;
+        }
+      } else {
+        errorReporter.reportError(ErrorType::TYPE_MISMATCH, expr->getStart()->getLine(),
+                                  expr->getStart()->getCharPositionInLine(), "Expected nested array expression");
+        setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+        return;
+      }
+    }
+    // wrap the element type in an additional array type
+    setExpressionType(ctx, std::make_shared<ArrayType>(elementType));
+  } else {
+    // check if all elements are of the same type
+    for (auto expr : ctx->expression_list()->expression()) {
+      auto elemType = getExpressionType(expr);
+      if (!elemType) {
+        errorReporter.reportError(ErrorType::TYPE_MISMATCH, expr->getStart()->getLine(),
+                                  expr->getStart()->getCharPositionInLine(), "Cannot determine type for array element");
+        setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+        return;
+      }
+      if (!areTypesCompatible(elemType, elementType, expr, ctx)) {
+        errorReporter.reportError(
+            ErrorType::TYPE_MISMATCH, expr->getStart()->getLine(), expr->getStart()->getCharPositionInLine(),
+            "Array element type mismatch: expected " + elementType->toString() + ", got " + elemType->toString());
+        setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+        return;
+      }
+    }
+    setExpressionType(ctx, std::make_shared<ArrayType>(elementType));
+  }
+}
+
+std::shared_ptr<Type> TypeCheckingListener::getArrayBaseType(const std::shared_ptr<Type>& type) {
+  if (!type)
+    return nullptr;
+
+  if (auto arrayType = std::dynamic_pointer_cast<ArrayType>(type)) {
+    return getArrayBaseType(arrayType->getElementType());
+  }
+  return type;
+}
+
+int TypeCheckingListener::getArrayDimensions(const std::shared_ptr<Type>& type) {
+  if (!type)
+    return 0;
+
+  if (auto arrayType = std::dynamic_pointer_cast<ArrayType>(type)) {
+    return 1 + getArrayDimensions(arrayType->getElementType());
+  }
+  return 0;
+}
+
+bool TypeCheckingListener::checkArrayExpressionType(cgullParser::Array_expressionContext* ctx,
+                                                    const std::shared_ptr<Type>& expectedType, int currentDimension) {
+  if (!ctx->expression_list()) {
+    return false;
+  }
+
+  // get the expected element type for this dimension
+  std::shared_ptr<Type> expectedElementType;
+  if (auto arrayType = std::dynamic_pointer_cast<ArrayType>(expectedType)) {
+    expectedElementType = arrayType->getElementType();
+  } else {
+    expectedElementType = expectedType;
+  }
+
+  // check each element in the array expression
   for (auto expr : ctx->expression_list()->expression()) {
     auto elemType = getExpressionType(expr);
     if (!elemType) {
       errorReporter.reportError(ErrorType::TYPE_MISMATCH, expr->getStart()->getLine(),
                                 expr->getStart()->getCharPositionInLine(), "Cannot determine type for array element");
+      return false;
     }
-    if (!areTypesCompatible(elemType, elementType, expr, ctx)) {
-      errorReporter.reportError(ErrorType::TYPE_MISMATCH, expr->getStart()->getLine(),
-                                expr->getStart()->getCharPositionInLine(), "Array element type mismatch");
+
+    // if this is the last dimension, check against the base type
+    if (currentDimension == getArrayDimensions(expectedType) - 1) {
+      if (!areTypesCompatible(elemType, expectedElementType, expr, ctx)) {
+        errorReporter.reportError(ErrorType::TYPE_MISMATCH, expr->getStart()->getLine(),
+                                  expr->getStart()->getCharPositionInLine(),
+                                  "Array element type mismatch: expected " + expectedElementType->toString() +
+                                      ", got " + elemType->toString());
+        return false;
+      }
+    } else {
+      // recursively check each element
+      if (auto nestedArray = dynamic_cast<cgullParser::Array_expressionContext*>(expr)) {
+        if (!checkArrayExpressionType(nestedArray, expectedElementType, currentDimension + 1)) {
+          return false;
+        }
+      } else {
+        errorReporter.reportError(ErrorType::TYPE_MISMATCH, expr->getStart()->getLine(),
+                                  expr->getStart()->getCharPositionInLine(),
+                                  "Expected nested array expression for multidimensional array");
+        return false;
+      }
     }
   }
-  setExpressionType(ctx, std::make_shared<ArrayType>(elementType));
+  return true;
 }
 
 void TypeCheckingListener::exitBase_expression(cgullParser::Base_expressionContext* ctx) {
@@ -990,6 +1054,8 @@ void TypeCheckingListener::exitBase_expression(cgullParser::Base_expressionConte
     setExpressionType(ctx, getExpressionType(ctx->cast_expression()));
   } else if (ctx->tuple_expression()) {
     setExpressionType(ctx, getExpressionType(ctx->tuple_expression()));
+  } else if (ctx->array_expression()) {
+    setExpressionType(ctx, getExpressionType(ctx->array_expression()));
   } else if (ctx->unary_expression()) {
     setExpressionType(ctx, getExpressionType(ctx->unary_expression()));
   } else if (ctx->allocate_expression()) {
@@ -1126,32 +1192,53 @@ void TypeCheckingListener::exitAllocate_primitive(cgullParser::Allocate_primitiv
 }
 
 void TypeCheckingListener::exitAllocate_array(cgullParser::Allocate_arrayContext* ctx) {
-  auto baseType = resolveType(ctx->type());
-  if (baseType) {
-    setExpressionType(ctx, baseType);
-  } else {
+  // get the base type of the array (without array dimensions)
+  std::shared_ptr<Type> baseType = nullptr;
+  if (ctx->type()->primitive_type()) {
+    std::string primitiveTypeName = ctx->type()->primitive_type()->getText();
+    baseType = resolvePrimitiveType(primitiveTypeName);
+  } else if (ctx->type()->user_defined_type()) {
+    std::string typeName = ctx->type()->user_defined_type()->getText();
+    auto resolvedTypeSymbol = currentScope->resolve(typeName);
+    if (auto typeSymbol = std::dynamic_pointer_cast<TypeSymbol>(resolvedTypeSymbol)) {
+      baseType = typeSymbol->typeRepresentation;
+    }
+  }
+
+  if (!baseType) {
     errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
                               ctx->getStart()->getCharPositionInLine(), "Invalid type in array allocation");
     setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+    return;
   }
-  if (ctx->expression()) {
-    // ensure integer size
-    setExpressionType(ctx, std::make_shared<ArrayType>(baseType));
-    auto size = getExpressionType(ctx->expression());
-    if (!size || !std::dynamic_pointer_cast<PrimitiveType>(size)->isInteger()) {
-      errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
-                                ctx->getStart()->getCharPositionInLine(), "Array size must be an integer");
-      setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+
+  // add array dimensions based on the number of expressions
+  if (ctx->expression().size() > 0) {
+    // ensure integer size for each dimension
+    for (auto expr : ctx->expression()) {
+      auto size = getExpressionType(expr);
+      if (!size || !std::dynamic_pointer_cast<PrimitiveType>(size)->isInteger()) {
+        errorReporter.reportError(ErrorType::TYPE_MISMATCH, expr->getStart()->getLine(),
+                                  expr->getStart()->getCharPositionInLine(), "Array size must be an integer");
+        setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+        return;
+      }
+      // add an array dimension for each size expression
+      baseType = std::make_shared<ArrayType>(baseType);
     }
   } else if (ctx->array_expression()) {
-    // ensure matches base type
+    // for array expressions, we need to determine the dimensions from the expression
     auto arrayType = getExpressionType(ctx->array_expression());
-    if (!arrayType || !areTypesCompatible(arrayType, baseType, ctx->array_expression(), ctx)) {
+    if (!arrayType) {
       errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
-                                ctx->getStart()->getCharPositionInLine(), "Array type mismatch");
+                                ctx->getStart()->getCharPositionInLine(), "Cannot determine type of array expression");
       setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+      return;
     }
+    baseType = arrayType;
   }
+
+  setExpressionType(ctx, baseType);
 }
 
 void TypeCheckingListener::exitAllocate_struct(cgullParser::Allocate_structContext* ctx) {

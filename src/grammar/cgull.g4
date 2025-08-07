@@ -18,6 +18,7 @@ base_expression
     | cast_expression
     | unary_expression
     | tuple_expression
+    | array_expression
     | variable
     | base_expression (MULT_OP | DIV_OP | MOD_OP) base_expression
     | base_expression (PLUS_OP | MINUS_OP) base_expression
@@ -42,14 +43,12 @@ variable
     ;
 
 index_expression
-    : indexable '[' expression ']'
+    : indexable ('[' expression ']')+
     ;
 
 indexable
     : IDENTIFIER
     | '(' expression ')'
-    | indexable '[' expression ']'
-    | indexable '(' expression_list? ')'
     ;
 
 dereference_expression
@@ -88,7 +87,7 @@ allocate_primitive
     ;
 
 allocate_array
-    : type ('[' expression ']' | array_expression)
+    : type (('[' expression ']')+ | array_expression)
     ;
 
 allocate_struct
@@ -271,7 +270,7 @@ break_statement
 /* ----- types ----- */
 
 type
-    : (primitive_type | user_defined_type | tuple_type) array_suffix? '*'*
+    : (primitive_type | user_defined_type | tuple_type) array_suffix* '*'?
     ;
 
 array_suffix

@@ -20,6 +20,11 @@ public:
 
   static std::shared_ptr<Type> resolvePrimitiveType(const std::string& typeName);
 
+  std::shared_ptr<Type> getArrayBaseType(const std::shared_ptr<Type>& type);
+  int getArrayDimensions(const std::shared_ptr<Type>& type);
+  bool checkArrayExpressionType(cgullParser::Array_expressionContext* ctx, const std::shared_ptr<Type>& expectedType,
+                                int currentDimension);
+
 private:
   ErrorReporter& errorReporter;
   std::shared_ptr<Scope> currentScope;
