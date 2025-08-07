@@ -59,7 +59,6 @@ void SemanticAnalyzer::addBuiltinFunctions() {
   };
 
   auto intType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::INT);
-  auto longType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::LONG);
   auto floatType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::FLOAT);
   auto boolType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::BOOLEAN);
   auto stringType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::STRING);

@@ -61,13 +61,6 @@ void BytecodeIRGeneratorListener::generateStringConversion(antlr4::ParserRuleCon
         currentFunction->instructions.push_back(rawInstruction);
         break;
       }
-      case PrimitiveType::PrimitiveKind::LONG: {
-        // convert long to string
-        auto rawInstruction =
-            std::make_shared<IRRawInstruction>("invokestatic java/lang/Long.toString (J)java/lang/String");
-        currentFunction->instructions.push_back(rawInstruction);
-        break;
-      }
       case PrimitiveType::PrimitiveKind::BOOLEAN: {
         // convert boolean to string
         auto rawInstruction =
@@ -179,7 +172,6 @@ void BytecodeIRGeneratorListener::enterBase_expression(cgullParser::Base_express
         }
         break;
       }
-      case PrimitiveType::PrimitiveKind::LONG:
       case PrimitiveType::PrimitiveKind::INT:
       case PrimitiveType::PrimitiveKind::FLOAT:
       case PrimitiveType::PrimitiveKind::STRING: {
@@ -219,9 +211,6 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
       break;
     case PrimitiveType::PrimitiveKind::FLOAT:
       prefix = "f";
-      break;
-    case PrimitiveType::PrimitiveKind::LONG:
-      prefix = "l";
       break;
     case PrimitiveType::PrimitiveKind::BOOLEAN:
       prefix = "i";
@@ -452,9 +441,6 @@ void BytecodeIRGeneratorListener::exitVariable_declaration(cgullParser::Variable
         case PrimitiveType::PrimitiveKind::FLOAT:
           storeInstruction = "fstore " + std::to_string(varSymbol->localIndex);
           break;
-        case PrimitiveType::PrimitiveKind::LONG:
-          storeInstruction = "lstore " + std::to_string(varSymbol->localIndex);
-          break;
         case PrimitiveType::PrimitiveKind::STRING:
           storeInstruction = "astore " + std::to_string(varSymbol->localIndex);
           break;
@@ -485,28 +471,8 @@ void BytecodeIRGeneratorListener::exitVariable(cgullParser::VariableContext* ctx
 
       if (primitiveType) {
         // load value from the local variable onto the stack
-        std::string loadInstruction;
-        switch (primitiveType->getPrimitiveKind()) {
-        case PrimitiveType::PrimitiveKind::INT:
-          loadInstruction = "iload " + std::to_string(varSymbol->localIndex);
-          break;
-        case PrimitiveType::PrimitiveKind::FLOAT:
-          loadInstruction = "fload " + std::to_string(varSymbol->localIndex);
-          break;
-        case PrimitiveType::PrimitiveKind::STRING:
-          loadInstruction = "aload " + std::to_string(varSymbol->localIndex);
-          break;
-        case PrimitiveType::PrimitiveKind::LONG:
-          loadInstruction = "lload " + std::to_string(varSymbol->localIndex);
-          break;
-        case PrimitiveType::PrimitiveKind::BOOLEAN:
-          loadInstruction = "iload " + std::to_string(varSymbol->localIndex);
-          break;
-        default:
-          throw std::runtime_error("Unsupported variable type for loading: " + primitiveType->toString());
-        }
-
-        auto loadInst = std::make_shared<IRRawInstruction>(loadInstruction);
+        auto loadInst = std::make_shared<IRRawInstruction>(getLoadInstruction(primitiveType) + " " +
+                                                           std::to_string(varSymbol->localIndex));
         currentFunction->instructions.push_back(loadInst);
       }
     }
@@ -539,9 +505,6 @@ void BytecodeIRGeneratorListener::exitAssignment_statement(cgullParser::Assignme
           case PrimitiveType::PrimitiveKind::STRING:
             storeInstruction = "astore " + std::to_string(varSymbol->localIndex);
             break;
-          case PrimitiveType::PrimitiveKind::LONG:
-            storeInstruction = "lstore " + std::to_string(varSymbol->localIndex);
-            break;
           case PrimitiveType::PrimitiveKind::BOOLEAN:
             storeInstruction = "istore " + std::to_string(varSymbol->localIndex);
             break;
@@ -562,4 +525,184 @@ void BytecodeIRGeneratorListener::exitReturn_statement(cgullParser::Return_state
   // for now, we don't need to evaluate anything since we're just using main
   auto returnInst = std::make_shared<IRRawInstruction>("return");
   currentFunction->instructions.push_back(returnInst);
+}
+
+void BytecodeIRGeneratorListener::exitUnary_expression(cgullParser::Unary_expressionContext* ctx) {
+  // expression result is already on the stack
+  auto expressionCtx = ctx->expression();
+  auto expressionType = expressionTypes[expressionCtx];
+  auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(expressionType);
+  if (!primitiveType) {
+    return;
+  }
+  auto typeKind = primitiveType->getPrimitiveKind();
+  if (ctx->PLUS_OP() || ctx->MINUS_OP() || ctx->NOT_OP() || ctx->BITWISE_NOT_OP() || ctx->INCREMENT_OP() ||
+      ctx->DECREMENT_OP()) {
+    if (!primitiveType || !primitiveType->isNumeric()) {
+      throw std::runtime_error("Unsupported unary expression type: " + expressionType->toString());
+    }
+
+    if (ctx->PLUS_OP()) {
+      // there is no + unary operator in java,
+      // so essentially insert an if statement where if its less than 0, multiply by -1
+      auto endLabel = generateLabel();
+      auto dupInstruction = std::make_shared<IRRawInstruction>("dup");
+      currentFunction->instructions.push_back(dupInstruction);
+      if (typeKind == PrimitiveType::PrimitiveKind::INT) {
+        // just use ifge to skip the negation if already positive
+        auto rawInstruction = std::make_shared<IRRawInstruction>("ifge " + endLabel);
+        currentFunction->instructions.push_back(rawInstruction);
+        auto rawInstructionNegate = std::make_shared<IRRawInstruction>("ineg");
+        currentFunction->instructions.push_back(rawInstructionNegate);
+      } else if (typeKind == PrimitiveType::PrimitiveKind::FLOAT) {
+        // use fcmpl with 0, then ifgt to skip the negation if already positive
+        auto pushZeroInstruction = std::make_shared<IRRawInstruction>("fconst 0");
+        currentFunction->instructions.push_back(pushZeroInstruction);
+        auto rawInstructionFcmpl = std::make_shared<IRRawInstruction>("fcmpl");
+        currentFunction->instructions.push_back(rawInstructionFcmpl);
+        auto rawInstruction = std::make_shared<IRRawInstruction>("ifge " + endLabel);
+        currentFunction->instructions.push_back(rawInstruction);
+        auto rawInstructionNegate = std::make_shared<IRRawInstruction>("fneg");
+        currentFunction->instructions.push_back(rawInstructionNegate);
+      } else {
+        throw std::runtime_error("Unsupported unary expression type: " + expressionType->toString());
+      }
+      auto rawInstructionEndLabel = std::make_shared<IRRawInstruction>(endLabel + ":");
+      currentFunction->instructions.push_back(rawInstructionEndLabel);
+    } else if (ctx->MINUS_OP()) {
+      // always negate
+      if (typeKind == PrimitiveType::PrimitiveKind::INT) {
+        auto rawInstructionNegate = std::make_shared<IRRawInstruction>("ineg");
+        currentFunction->instructions.push_back(rawInstructionNegate);
+      } else if (typeKind == PrimitiveType::PrimitiveKind::FLOAT) {
+        auto rawInstructionNegate = std::make_shared<IRRawInstruction>("fneg");
+        currentFunction->instructions.push_back(rawInstructionNegate);
+      } else {
+        throw std::runtime_error("Unsupported unary expression type: " + expressionType->toString());
+      }
+    } else if (ctx->NOT_OP()) {
+      // only works on bools, already checked, use xor to flip
+      auto rawInstructionPushTrue = std::make_shared<IRRawInstruction>("iconst 1");
+      currentFunction->instructions.push_back(rawInstructionPushTrue);
+      auto rawInstructionXor = std::make_shared<IRRawInstruction>("ixor");
+      currentFunction->instructions.push_back(rawInstructionXor);
+    } else if (ctx->BITWISE_NOT_OP()) {
+      // only works on ints, already checked
+      if (typeKind == PrimitiveType::PrimitiveKind::INT) {
+        auto rawInstructionNot = std::make_shared<IRRawInstruction>("ldc -1");
+        currentFunction->instructions.push_back(rawInstructionNot);
+        auto rawInstructionXor = std::make_shared<IRRawInstruction>("ixor");
+        currentFunction->instructions.push_back(rawInstructionXor);
+      } else {
+        throw std::runtime_error("Unsupported unary expression type: " + expressionType->toString());
+      }
+    } else if (ctx->INCREMENT_OP()) {
+      if (typeKind == PrimitiveType::PrimitiveKind::INT) {
+        auto rawInstructionIncrement = std::make_shared<IRRawInstruction>("iinc");
+        currentFunction->instructions.push_back(rawInstructionIncrement);
+      } else {
+        throw std::runtime_error("Unsupported unary expression type: " + expressionType->toString());
+      }
+    } else if (ctx->DECREMENT_OP()) {
+      // there are no decrement instructions, so just subtract 1 normally
+      if (typeKind == PrimitiveType::PrimitiveKind::INT) {
+        auto rawInstructionSubtract = std::make_shared<IRRawInstruction>("iconst 1");
+        currentFunction->instructions.push_back(rawInstructionSubtract);
+        auto rawInstructionSubtract2 = std::make_shared<IRRawInstruction>("isub");
+        currentFunction->instructions.push_back(rawInstructionSubtract2);
+      } else if (typeKind == PrimitiveType::PrimitiveKind::FLOAT) {
+        auto rawInstructionSubtract = std::make_shared<IRRawInstruction>("fconst 1");
+        currentFunction->instructions.push_back(rawInstructionSubtract);
+        auto rawInstructionSubtract2 = std::make_shared<IRRawInstruction>("fsub");
+        currentFunction->instructions.push_back(rawInstructionSubtract2);
+      } else {
+        throw std::runtime_error("Unsupported unary expression type: " + expressionType->toString());
+      }
+    }
+  }
+}
+
+// needs more work in HW5 for sure
+void BytecodeIRGeneratorListener::exitPostfix_expression(cgullParser::Postfix_expressionContext* ctx) {
+  if (ctx->IDENTIFIER()) {
+    auto scope = getCurrentScope(ctx);
+    std::string identifier = ctx->IDENTIFIER()->getText();
+    auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(scope->resolve(identifier));
+
+    if (varSymbol) {
+      auto type = varSymbol->dataType;
+      auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
+      auto typeKind = primitiveType->getPrimitiveKind();
+      if (primitiveType) {
+        // load the value in question (it's an identifier, so its not on the stack)
+        auto loadInstruction = std::make_shared<IRRawInstruction>(getLoadInstruction(primitiveType) + " " +
+                                                                  std::to_string(varSymbol->localIndex));
+        currentFunction->instructions.push_back(loadInstruction);
+
+        // duplicate the value on the stack
+        auto dupInst = std::make_shared<IRRawInstruction>("dup");
+        currentFunction->instructions.push_back(dupInst);
+
+        // increment or decrement the value and store it back in the variable
+        // then the previous value is left on the stack to be consumed
+        if (typeKind == PrimitiveType::PrimitiveKind::INT) {
+          auto pushOneInst = std::make_shared<IRRawInstruction>("iconst 1");
+          currentFunction->instructions.push_back(pushOneInst);
+          if (ctx->INCREMENT_OP()) {
+            auto addInst = std::make_shared<IRRawInstruction>("iadd");
+            currentFunction->instructions.push_back(addInst);
+          } else if (ctx->DECREMENT_OP()) {
+            auto subInst = std::make_shared<IRRawInstruction>("isub");
+            currentFunction->instructions.push_back(subInst);
+          }
+        } else if (typeKind == PrimitiveType::PrimitiveKind::FLOAT) {
+          auto pushOneInst = std::make_shared<IRRawInstruction>("fconst 1");
+          currentFunction->instructions.push_back(pushOneInst);
+          if (ctx->INCREMENT_OP()) {
+            auto addInst = std::make_shared<IRRawInstruction>("fadd");
+            currentFunction->instructions.push_back(addInst);
+          } else if (ctx->DECREMENT_OP()) {
+            auto subInst = std::make_shared<IRRawInstruction>("fsub");
+            currentFunction->instructions.push_back(subInst);
+          }
+        } else {
+          throw std::runtime_error("Unsupported variable type for postfix expression: " + primitiveType->toString());
+        }
+
+        auto storeInst = std::make_shared<IRRawInstruction>(getStoreInstruction(primitiveType) + " " +
+                                                            std::to_string(varSymbol->localIndex));
+        currentFunction->instructions.push_back(storeInst);
+      }
+    }
+  }
+}
+
+std::string BytecodeIRGeneratorListener::getLoadInstruction(const std::shared_ptr<PrimitiveType>& primitiveType) {
+  switch (primitiveType->getPrimitiveKind()) {
+  case PrimitiveType::PrimitiveKind::INT:
+    return "iload";
+  case PrimitiveType::PrimitiveKind::FLOAT:
+    return "fload";
+  case PrimitiveType::PrimitiveKind::BOOLEAN:
+    return "iload";
+  case PrimitiveType::PrimitiveKind::STRING:
+    return "aload";
+  default:
+    throw std::runtime_error("Unsupported variable type for loading: " + primitiveType->toString());
+  }
+}
+
+std::string BytecodeIRGeneratorListener::getStoreInstruction(const std::shared_ptr<PrimitiveType>& primitiveType) {
+  switch (primitiveType->getPrimitiveKind()) {
+  case PrimitiveType::PrimitiveKind::INT:
+    return "istore";
+  case PrimitiveType::PrimitiveKind::FLOAT:
+    return "fstore";
+  case PrimitiveType::PrimitiveKind::BOOLEAN:
+    return "istore";
+  case PrimitiveType::PrimitiveKind::STRING:
+    return "astore";
+  default:
+    throw std::runtime_error("Unsupported variable type for storing: " + primitiveType->toString());
+  }
 }

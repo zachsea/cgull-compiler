@@ -23,7 +23,6 @@ bool PrimitiveType::isNumeric() const {
 bool PrimitiveType::isInteger() const {
   switch (primitiveKind) {
   case PrimitiveKind::INT:
-  case PrimitiveKind::LONG:
     return true;
   default:
     return false;
@@ -34,8 +33,6 @@ std::string PrimitiveType::toString() const {
   switch (primitiveKind) {
   case PrimitiveKind::INT:
     return "int";
-  case PrimitiveKind::LONG:
-    return "long";
   case PrimitiveKind::FLOAT:
     return "float";
   case PrimitiveKind::BOOLEAN:

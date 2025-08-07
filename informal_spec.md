@@ -260,7 +260,6 @@ See [examples/ex8_types_and_casting.cgl](examples/ex8_types_and_casting.cgl) for
 
 - `bool` - 8-bit (conceptually 1-bit) boolean (true/false)
 - `int` - 32-bit signed integer
-- `long` - 64-bit signed integer
 - `float` - 64-bit floating point number
 
 No current support for single unicode characters, may be added in the future.

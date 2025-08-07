@@ -25,7 +25,6 @@ class PrimitiveType : public Type {
 public:
   enum class PrimitiveKind {
     INT,
-    LONG,
     FLOAT,
     BOOLEAN,
     STRING,

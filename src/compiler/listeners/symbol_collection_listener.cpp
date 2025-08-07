@@ -423,8 +423,6 @@ std::shared_ptr<Type> SymbolCollectionListener::resolveType(cgullParser::TypeCon
 std::shared_ptr<Type> SymbolCollectionListener::resolvePrimitiveType(const std::string& typeName) {
   if (typeName == "int")
     return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::INT);
-  if (typeName == "long")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::LONG);
   if (typeName == "float")
     return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::FLOAT);
   if (typeName == "bool")

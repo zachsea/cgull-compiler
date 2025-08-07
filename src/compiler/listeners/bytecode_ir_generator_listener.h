@@ -35,6 +35,8 @@ private:
   int assignLocalIndex(const std::shared_ptr<VariableSymbol>& variable);
   int getLocalIndex(const std::string& variableName, std::shared_ptr<Scope> scope);
   void generateStringConversion(antlr4::ParserRuleContext* ctx);
+  std::string getLoadInstruction(const std::shared_ptr<PrimitiveType>& primitiveType);
+  std::string getStoreInstruction(const std::shared_ptr<PrimitiveType>& primitiveType);
 
   virtual void enterProgram(cgullParser::ProgramContext* ctx) override;
   virtual void exitProgram(cgullParser::ProgramContext* ctx) override;
@@ -58,6 +60,10 @@ private:
   virtual void exitAssignment_statement(cgullParser::Assignment_statementContext* ctx) override;
 
   virtual void exitReturn_statement(cgullParser::Return_statementContext* ctx) override;
+
+  virtual void exitUnary_expression(cgullParser::Unary_expressionContext* ctx) override;
+
+  virtual void exitPostfix_expression(cgullParser::Postfix_expressionContext* ctx) override;
 };
 
 #endif // BYTECODE_IR_GENERATOR_LISTENER_H

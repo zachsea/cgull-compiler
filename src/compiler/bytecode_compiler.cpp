@@ -34,8 +34,6 @@ std::string BytecodeCompiler::typeToJVMType(const std::shared_ptr<Type>& type) {
     switch (primitiveType->getPrimitiveKind()) {
     case PrimitiveType::PrimitiveKind::INT:
       return "I";
-    case PrimitiveType::PrimitiveKind::LONG:
-      return "J";
     case PrimitiveType::PrimitiveKind::FLOAT:
       return "F";
     case PrimitiveType::PrimitiveKind::STRING:

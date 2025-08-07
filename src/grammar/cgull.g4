@@ -293,8 +293,7 @@ type_list
     ;
 
 primitive_type
-    : INT_TYPE | LONG_TYPE
-    | FLOAT_TYPE | STRING_TYPE | BOOLEAN_TYPE | VOID_TYPE
+    : INT_TYPE | FLOAT_TYPE | STRING_TYPE | BOOLEAN_TYPE | VOID_TYPE
     ;
 
 user_defined_type
@@ -354,7 +353,6 @@ INCLUSIVE_RANGE: '..=' ;
 EXCLUSIVE_RANGE: '..' ;
 
 INT_TYPE: 'int' ;
-LONG_TYPE: 'long' ;
 FLOAT_TYPE: 'float' ;
 STRING_TYPE: 'string' ;
 BOOLEAN_TYPE: 'bool' ;
@@ -368,7 +366,7 @@ PRIVATE: 'private' ;
 ALLOCATE: 'allocate' ;
 DEALLOCATE: 'deallocate' ;
 
-NUMBER_LITERAL: [0-9]+ 'L'? ;
+NUMBER_LITERAL: [0-9]+ ;
 DECIMAL_LITERAL: [0-9]+ '.' [0-9]+ ;
 FLOAT_POSINF_LITERAL: '\'+inf\'' ;
 FLOAT_NEGINF_LITERAL: '\'-inf\'' ;

@@ -156,8 +156,6 @@ std::shared_ptr<Type> TypeCheckingListener::resolveType(cgullParser::TypeContext
 std::shared_ptr<Type> TypeCheckingListener::resolvePrimitiveType(const std::string& typeName) {
   if (typeName == "int")
     return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::INT);
-  if (typeName == "long")
-    return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::LONG);
   if (typeName == "float")
     return std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::FLOAT);
   if (typeName == "bool")
@@ -467,11 +465,7 @@ void TypeCheckingListener::exitLiteral(cgullParser::LiteralContext* ctx) {
 
   // this needs to be changed to allow the hex/bin literals to be of any numeric type
   if (ctx->NUMBER_LITERAL() || ctx->HEX_LITERAL() || ctx->BINARY_LITERAL()) {
-    if (ctx->getText().find("L") != std::string::npos) {
-      literalType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::LONG);
-    } else {
-      literalType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::INT);
-    }
+    literalType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::INT);
   } else if (ctx->FLOAT_POSINF_LITERAL() || ctx->FLOAT_NEGINF_LITERAL() || ctx->FLOAT_NAN_LITERAL() ||
              ctx->DECIMAL_LITERAL()) {
     literalType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::FLOAT);
@@ -1217,11 +1211,12 @@ void TypeCheckingListener::exitUnary_expression(cgullParser::Unary_expressionCon
   // handle unary +, -
   if (ctx->PLUS_OP() || ctx->MINUS_OP()) {
     auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(operandType);
-    if (!primitiveType || !primitiveType->isNumeric()) {
+    if (!primitiveType || !primitiveType->isNumeric() ||
+        primitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::BOOLEAN) {
       errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
                                 ctx->getStart()->getCharPositionInLine(),
                                 "Unary operator " + std::string(1, ctx->getText()[0]) +
-                                    " requires numeric operand, got " + operandType->toString());
+                                    " requires numeric non-boolean operand, got " + operandType->toString());
       setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::INT));
     } else {
       setExpressionType(ctx, operandType);
@@ -1260,7 +1255,8 @@ void TypeCheckingListener::exitUnary_expression(cgullParser::Unary_expressionCon
   // handle increment/decrement operators (++, --)
   else if (ctx->INCREMENT_OP() || ctx->DECREMENT_OP()) {
     auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(operandType);
-    if (!primitiveType || !primitiveType->isNumeric()) {
+    if (!primitiveType || !primitiveType->isNumeric() ||
+        primitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::BOOLEAN) {
       errorReporter.reportError(
           ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(), ctx->getStart()->getCharPositionInLine(),
           "Increment/decrement operator requires numeric operand, got " + operandType->toString());

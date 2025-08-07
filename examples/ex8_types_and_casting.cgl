@@ -6,20 +6,14 @@
 fn main() -> int {
     bool b = true;
     int i = 2147483647;
-    long l = 9223372036854775807;
     float f = 3.141592653589793;
 
     // printing scalar types
     println("Boolean value: " + b);
     println("Int value: " + i);
-    println("Long value: " + l);
     println("Float value: " + f);
 
-    // smaller to larger type implicit casting
-    long int_to_long = i;     // int -> long
-
     println("\nImplicit casting:");
-    println("int to long: " + int_to_long);
 
     // Explicit casting with 'as'
     println("\nExplicit casting with 'as':");
