@@ -392,16 +392,19 @@ void BytecodeIRGeneratorListener::exitExpression(cgullParser::ExpressionContext*
   if (indexExpr && indexExpr->expression(indexExpr->expression().size() - 1) == ctx) {
     // check if we're in an assignment context by walking up the parent chain
     bool isAssignment = false;
+    bool isLeftSide = false;
     auto current = ctx->parent;
     while (current) {
-      if (dynamic_cast<cgullParser::Assignment_statementContext*>(current)) {
+      if (auto assignmentCtx = dynamic_cast<cgullParser::Assignment_statementContext*>(current)) {
         isAssignment = true;
+        // check if this index expression is the left side of the assignment
+        isLeftSide = assignmentCtx->index_expression() == indexExpr;
         break;
       }
       current = current->parent;
     }
 
-    if (!isAssignment) {
+    if (!isAssignment || (!lastFieldType && !isLeftSide)) {
       auto type = expressionTypes[indexExpr];
       if (!type) {
         throw std::runtime_error("Type not found for expression: " + indexExpr->getText());

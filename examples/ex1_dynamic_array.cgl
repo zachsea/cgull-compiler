@@ -72,7 +72,6 @@ fn main() {
   // $toString will be called implicitly since a string is expected
   println(vec);
   println(vec2);
-  // return 0 is implicit
 }
 
 /* expected output:
