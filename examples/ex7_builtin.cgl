@@ -14,7 +14,6 @@ struct Playlist {
   int count;
 }
 
-const string SEPARATOR = "------------------------";
 
 fn formatTime(int seconds) -> string {
   int minutes = seconds / 60;
@@ -23,6 +22,7 @@ fn formatTime(int seconds) -> string {
 }
 
 fn main() -> int {
+  const string SEPARATOR = "------------------------";
   println("=== Playlist Creator ===");
 
   print("Enter playlist title: ");

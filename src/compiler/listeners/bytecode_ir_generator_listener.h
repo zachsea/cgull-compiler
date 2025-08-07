@@ -62,6 +62,11 @@ private:
   std::unordered_map<cgullParser::Base_expressionContext*, ExpressionLabels> expressionLabelsMap;
   std::unordered_map<cgullParser::Base_expressionContext*, cgullParser::Base_expressionContext*> parentExpressionMap;
 
+  // store temporary context for field access
+  std::shared_ptr<Type> lastFieldType = nullptr;
+  std::unordered_map<antlr4::ParserRuleContext*, bool> isDereferenceContexts;
+
+
   std::shared_ptr<Scope> getCurrentScope(antlr4::ParserRuleContext* ctx) const;
   std::string generateLabel();
 
@@ -71,6 +76,7 @@ private:
   std::string getLoadInstruction(const std::shared_ptr<PrimitiveType>& primitiveType);
   std::string getStoreInstruction(const std::shared_ptr<PrimitiveType>& primitiveType);
   std::string getArrayOperationInstruction(const std::shared_ptr<Type>& type, bool isStore);
+  void generateDereference(antlr4::ParserRuleContext* ctx);
   void handleLogicalExpression(cgullParser::Base_expressionContext* ctx);
   void convertPrimitiveToPrimitive(const std::shared_ptr<PrimitiveType>& fromType,
                                    const std::shared_ptr<PrimitiveType>& toType);
@@ -139,6 +145,11 @@ private:
 
   virtual void enterStruct_definition(cgullParser::Struct_definitionContext* ctx) override;
   virtual void exitStruct_definition(cgullParser::Struct_definitionContext* ctx) override;
+
+  virtual void enterField_access(cgullParser::Field_accessContext* ctx) override;
+  virtual void exitField_access(cgullParser::Field_accessContext* ctx) override;
+
+  virtual void exitField(cgullParser::FieldContext* ctx) override;
 };
 
 #endif // BYTECODE_IR_GENERATOR_LISTENER_H

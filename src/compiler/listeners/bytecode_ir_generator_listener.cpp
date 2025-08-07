@@ -775,6 +775,15 @@ void BytecodeIRGeneratorListener::exitVariable_declaration(cgullParser::Variable
     if (varSymbol) {
       auto type = varSymbol->dataType;
       auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
+      auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
+      auto arrayType = std::dynamic_pointer_cast<ArrayType>(type);
+      auto userDefinedType = std::dynamic_pointer_cast<UserDefinedType>(type);
+
+      if (userDefinedType) {
+        auto storeInst = std::make_shared<IRRawInstruction>("astore " + std::to_string(varSymbol->localIndex));
+        currentFunction->instructions.push_back(storeInst);
+        return;
+      }
 
       if (primitiveType) {
         std::string storeInstruction;
@@ -798,8 +807,6 @@ void BytecodeIRGeneratorListener::exitVariable_declaration(cgullParser::Variable
         auto storeInst = std::make_shared<IRRawInstruction>(storeInstruction);
         currentFunction->instructions.push_back(storeInst);
       }
-      auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
-      auto arrayType = std::dynamic_pointer_cast<ArrayType>(type);
       if (pointerType || arrayType) {
         auto storeInstruction = std::make_shared<IRRawInstruction>("astore " + std::to_string(varSymbol->localIndex));
         currentFunction->instructions.push_back(storeInstruction);
@@ -820,8 +827,9 @@ void BytecodeIRGeneratorListener::exitVariable(cgullParser::VariableContext* ctx
       auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
       auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
       auto arrayType = std::dynamic_pointer_cast<ArrayType>(type);
+      auto userDefinedType = std::dynamic_pointer_cast<UserDefinedType>(type);
 
-      if (pointerType || arrayType) {
+      if (pointerType || arrayType || userDefinedType) {
         auto loadInstruction = std::make_shared<IRRawInstruction>("aload " + std::to_string(varSymbol->localIndex));
         currentFunction->instructions.push_back(loadInstruction);
       }
@@ -855,7 +863,9 @@ void BytecodeIRGeneratorListener::exitAssignment_statement(cgullParser::Assignme
     auto scope = getCurrentScope(ctx);
     auto variable = ctx->variable();
 
-    if (variable->IDENTIFIER()) {
+    if (variable->field_access()) {
+      // TODO
+    } else if (variable->IDENTIFIER()) {
       std::string identifier = variable->IDENTIFIER()->getText();
       auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(scope->resolve(identifier));
 
@@ -1541,25 +1551,7 @@ void BytecodeIRGeneratorListener::exitDereferenceable(cgullParser::Dereferenceab
     currentFunction->instructions.push_back(loadInst);
   }
   if (!dereferenceAssignment) {
-    // if its a primitive, we'll use the wrapper class
-    if (derefType->getKind() == Type::TypeKind::PRIMITIVE) {
-      auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(derefType);
-      auto irClass = primitiveWrappers[primitiveType->getPrimitiveKind()];
-      if (!irClass) {
-        throw std::runtime_error("Primitive type " + primitiveType->toString() + " has no wrapper class");
-      }
-      // run the getter method
-      auto valueMethod = irClass->getMethod("getValue");
-      if (!valueMethod) {
-        throw std::runtime_error("Primitive type " + primitiveType->toString() + " has no getValue method");
-      }
-      std::string retType = BytecodeCompiler::typeToJVMType(derefType);
-      auto invokeInst = std::make_shared<IRRawInstruction>("invokevirtual " + irClass->name + "." +
-                                                           valueMethod->getMangledName() + "() " + retType);
-      currentFunction->instructions.push_back(invokeInst);
-    } else {
-      throw std::runtime_error("Invalid dereferenceable: " + ctx->getText());
-    }
+    generateDereference(dynamic_cast<antlr4::ParserRuleContext*>(ctx->parent));
   }
   dereferenceAssignment = false;
 }
@@ -1688,6 +1680,64 @@ void BytecodeIRGeneratorListener::exitStruct_definition(cgullParser::Struct_defi
   }
 }
 
+void BytecodeIRGeneratorListener::enterField_access(cgullParser::Field_accessContext* ctx) {
+  std::vector<bool> isDereference;
+  for (auto expr : ctx->access_operator()) {
+    if (expr->getText() == "->") {
+      isDereference.push_back(true);
+    } else {
+      isDereference.push_back(false);
+    }
+  }
+  for (int i = 0; i < isDereference.size(); i++) {
+    isDereferenceContexts[ctx->field(i)] = isDereference[i];
+  }
+}
+
+void BytecodeIRGeneratorListener::exitField_access(cgullParser::Field_accessContext* ctx) {
+  lastFieldType = nullptr;
+}
+
+void BytecodeIRGeneratorListener::exitField(cgullParser::FieldContext* ctx) {
+  auto parent = dynamic_cast<cgullParser::Field_accessContext*>(ctx->parent);
+  // if first item, just load the identifier
+  if (!lastFieldType) {
+    if (ctx->IDENTIFIER()) {
+      auto scope = getCurrentScope(ctx);
+      std::string identifier = ctx->IDENTIFIER()->getText();
+      auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(scope->resolve(identifier));
+      auto loadInstruction = std::make_shared<IRRawInstruction>("aload " + std::to_string(varSymbol->localIndex));
+      currentFunction->instructions.push_back(loadInstruction);
+      lastFieldType = varSymbol->dataType;
+    } else {
+      lastFieldType = expressionTypes[ctx->expression()];
+    }
+    // if this context should be dereferenced, do so
+    if (isDereferenceContexts[ctx]) {
+      generateDereference(ctx);
+    }
+    return;
+  }
+  // take appropriate action based on last field type loaded...
+  auto userDefinedType = std::dynamic_pointer_cast<UserDefinedType>(lastFieldType);
+  if (userDefinedType) {
+    // already type checked, just load the field
+    auto structSymbol = userDefinedType->getTypeSymbol();
+    auto fieldTypeSymbol = std::dynamic_pointer_cast<VariableSymbol>(structSymbol->scope->resolve(ctx->IDENTIFIER()->getText()));
+    auto fieldType = fieldTypeSymbol->dataType;
+    std::string className = structSymbol->name;
+    auto getField = std::make_shared<IRRawInstruction>("getfield " + className + "." + ctx->IDENTIFIER()->getText() +
+                                                        " " + BytecodeCompiler::typeToJVMType(fieldType));
+    currentFunction->instructions.push_back(getField);
+    if (isDereferenceContexts[ctx]) {
+      generateDereference(ctx);
+    }
+    lastFieldType = fieldType;
+  } else {
+    throw std::runtime_error("Cannot access field of non-struct: " + lastFieldType->toString());
+  }
+}
+
 std::string BytecodeIRGeneratorListener::getArrayOperationInstruction(const std::shared_ptr<Type>& type, bool isStore) {
   auto arrayType = std::dynamic_pointer_cast<ArrayType>(type);
   auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
@@ -1704,4 +1754,26 @@ std::string BytecodeIRGeneratorListener::getArrayOperationInstruction(const std:
     return prefix + (isStore ? "astore" : "aload");
   }
   throw std::runtime_error("Unsupported type for array operation: " + type->toString());
+}
+
+void BytecodeIRGeneratorListener::generateDereference(antlr4::ParserRuleContext* ctx) {
+  auto derefType = expressionTypes[ctx];
+  if (derefType->getKind() == Type::TypeKind::PRIMITIVE) {
+    auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(derefType);
+    auto irClass = primitiveWrappers[primitiveType->getPrimitiveKind()];
+    if (!irClass) {
+      throw std::runtime_error("Primitive type " + primitiveType->toString() + " has no wrapper class");
+    }
+    // run the getter method
+    auto valueMethod = irClass->getMethod("getValue");
+    if (!valueMethod) {
+      throw std::runtime_error("Primitive type " + primitiveType->toString() + " has no getValue method");
+    }
+    std::string retType = BytecodeCompiler::typeToJVMType(derefType);
+    auto invokeInst = std::make_shared<IRRawInstruction>("invokevirtual " + irClass->name + "." +
+                                                        valueMethod->getMangledName() + "() " + retType);
+    currentFunction->instructions.push_back(invokeInst);
+  } else {
+    throw std::runtime_error("Invalid dereferenceable: " + ctx->getText());
+  }
 }

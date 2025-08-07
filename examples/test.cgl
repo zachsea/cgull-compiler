@@ -1,11 +1,17 @@
+struct Weird {
+  float z;
+  int* p;
+}
 struct Point {
   int x;
   int y;
-  int[] z;
+  Weird w;
 }
 
 fn main() {
-  int[] z = allocate int[10];
-  Point p = Point(1, 2, z);
+  int* ptr = allocate int(10);
+  Point p = Point(1, 2, Weird(3.0, ptr));
+  println(p.w.z);
+  println(*p.w.p);
   return;
 }
