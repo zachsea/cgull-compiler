@@ -496,6 +496,7 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
   auto type = expressionTypes[ctx];
   auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
   if (!primitiveType) {
+    generateStringConversion(ctx);
     return;
   }
   if (primitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING) {

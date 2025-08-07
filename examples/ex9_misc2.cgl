@@ -4,10 +4,10 @@
  */
 
 struct Game {
-  int id = 0;
-  string name = "";
-  string genre = "";
-  int rating = 0;
+  int id;
+  string name;
+  string genre;
+  int rating;
 
   fn $toString() -> string {
     return "Game ID: " + id + "\n" +
@@ -17,7 +17,7 @@ struct Game {
   }
 }
 
-fn main() -> int {
+fn main() {
   int gameSize = 3;
   Game[] games = allocate Game[gameSize];
   games[0] = Game(0, "Balatro", "Rogue-like", 10);

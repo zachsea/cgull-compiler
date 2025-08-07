@@ -1140,12 +1140,16 @@ void TypeCheckingListener::exitBase_expression(cgullParser::Base_expressionConte
         bool rightCanConvert = false;
 
         auto leftPrimitive = std::dynamic_pointer_cast<PrimitiveType>(left);
-        if (leftPrimitive && leftPrimitive->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING) {
+        auto leftUserDefined = std::dynamic_pointer_cast<UserDefinedType>(left);
+        if (leftPrimitive && leftPrimitive->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING ||
+            leftUserDefined && hasToStringMethod(leftUserDefined->getTypeSymbol()->typeRepresentation)) {
           leftCanConvert = true;
         }
 
         auto rightPrimitive = std::dynamic_pointer_cast<PrimitiveType>(right);
-        if (rightPrimitive && rightPrimitive->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING) {
+        auto rightUserDefined = std::dynamic_pointer_cast<UserDefinedType>(right);
+        if (rightPrimitive && rightPrimitive->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING ||
+            rightUserDefined && hasToStringMethod(rightUserDefined->getTypeSymbol()->typeRepresentation)) {
           rightCanConvert = true;
         }
 
@@ -1168,6 +1172,12 @@ void TypeCheckingListener::exitBase_expression(cgullParser::Base_expressionConte
 
           // only if at least one is a string and the other can be converted
           if (leftCanConvert && rightCanConvert) {
+            if (leftUserDefined) {
+              expectingStringConversion.insert(ctx->base_expression(0));
+            }
+            if (rightUserDefined) {
+              expectingStringConversion.insert(ctx->base_expression(1));
+            }
             setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::STRING));
             return;
           }
