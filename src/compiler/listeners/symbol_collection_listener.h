@@ -61,8 +61,6 @@ public:
 
   virtual void enterFunction_call(cgullParser::Function_callContext* ctx) override;
 
-  virtual void enterAllocate_struct(cgullParser::Allocate_structContext* ctx) override;
-
   virtual void enterCast_expression(cgullParser::Cast_expressionContext* ctx) override;
 
   virtual void enterPostfix_expression(cgullParser::Postfix_expressionContext* ctx) override;

@@ -81,7 +81,6 @@ private:
   void exitAllocate_expression(cgullParser::Allocate_expressionContext* ctx) override;
   void exitAllocate_primitive(cgullParser::Allocate_primitiveContext* ctx) override;
   void exitAllocate_array(cgullParser::Allocate_arrayContext* ctx) override;
-  void exitAllocate_struct(cgullParser::Allocate_structContext* ctx) override;
 
   void exitUnary_expression(cgullParser::Unary_expressionContext* ctx) override;
   void exitPostfix_expression(cgullParser::Postfix_expressionContext* ctx) override;

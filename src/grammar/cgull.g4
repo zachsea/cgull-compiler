@@ -79,7 +79,7 @@ function_call
     ;
 
 allocate_expression
-    : ALLOCATE (allocate_primitive | allocate_array | allocate_struct)
+    : ALLOCATE (allocate_primitive | allocate_array)
     ;
 
 allocate_primitive
@@ -88,10 +88,6 @@ allocate_primitive
 
 allocate_array
     : type (('[' expression ']')+ | array_expression)
-    ;
-
-allocate_struct
-    : IDENTIFIER '(' expression_list? ')'
     ;
 
 parameter

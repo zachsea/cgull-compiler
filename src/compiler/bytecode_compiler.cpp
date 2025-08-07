@@ -144,8 +144,10 @@ void BytecodeCompiler::generateClass(std::basic_ostream<char>& out, const std::s
     }
     out << ")";
     // function return type
-    if (method->returnTypes.size() > 0) {
+    if (method->returnTypes.size() > 0 && method->name != "<init>") {
       out << typeToJVMType(method->returnTypes[0]);
+    } else if (method->name == "<init>") {
+      out << "V";
     }
     out << "{\n";
 
@@ -202,12 +204,18 @@ void BytecodeCompiler::generateCallInstruction(std::basic_ostream<char>& out,
     return;
   }
 
-  // get the "this" from the function's scope
-  auto thisVar = std::dynamic_pointer_cast<VariableSymbol>(instruction->function->scope->resolve("this"));
-  if (thisVar) {
-    out << "invokevirtual " << thisVar->dataType->toString() << "." << instruction->function->getMangledName() << "(";
+  if (instruction->function->name == "<init>") {
+    // don't use mangled name for constructors
+    out << "invokespecial " << instruction->function->returnTypes[0]->toString() << "." << instruction->function->name
+        << "(";
   } else {
-    out << "invokestatic Main." << instruction->function->getMangledName() << "(";
+    // get the "this" from the function's scope
+    auto thisVar = std::dynamic_pointer_cast<VariableSymbol>(instruction->function->scope->resolve("this"));
+    if (thisVar) {
+      out << "invokevirtual " << thisVar->dataType->toString() << "." << instruction->function->getMangledName() << "(";
+    } else {
+      out << "invokestatic Main." << instruction->function->getMangledName() << "(";
+    }
   }
 
   for (int i = 0; i < instruction->function->parameters.size(); i++) {
@@ -218,7 +226,7 @@ void BytecodeCompiler::generateCallInstruction(std::basic_ostream<char>& out,
   }
   out << ")";
   // return type
-  if (instruction->function->returnTypes.size() > 0) {
+  if (instruction->function->returnTypes.size() > 0 && instruction->function->name != "<init>") {
     out << typeToJVMType(instruction->function->returnTypes[0]);
   } else {
     out << "V";

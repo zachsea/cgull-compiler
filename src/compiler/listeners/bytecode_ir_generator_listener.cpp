@@ -143,9 +143,23 @@ void BytecodeIRGeneratorListener::enterFunction_call(cgullParser::Function_callC
   // for cases where methods are called on objects, to be filled later HW5
   auto scope = getCurrentScope(ctx);
   if (scope) {
-    auto functionSymbol = scope->resolve(ctx->IDENTIFIER()->getText());
-    auto calledFunction = std::dynamic_pointer_cast<FunctionSymbol>(functionSymbol);
-    if (calledFunction->name == "print" || calledFunction->name == "println") {
+    // try to see if its a constructor first
+    auto constructor = constructorMap.find(ctx->IDENTIFIER()->getText());
+    std::shared_ptr<FunctionSymbol> functionSymbol;
+    if (constructor != constructorMap.end()) {
+      functionSymbol = constructor->second;
+      // we need a new instruction with dup to create a new object, will be called later in exitFunction_call
+      auto newInstruction = std::make_shared<IRRawInstruction>("new " + functionSymbol->returnTypes[0]->toString());
+      currentFunction->instructions.push_back(newInstruction);
+      auto dupInstruction = std::make_shared<IRRawInstruction>("dup");
+      currentFunction->instructions.push_back(dupInstruction);
+    } else {
+      functionSymbol = std::dynamic_pointer_cast<FunctionSymbol>(scope->resolve(ctx->IDENTIFIER()->getText()));
+    }
+    if (!functionSymbol) {
+      throw std::runtime_error("Function not found: " + ctx->IDENTIFIER()->getText());
+    }
+    if (functionSymbol->name == "print" || functionSymbol->name == "println") {
       // special case for print/println, we need to add a raw instruction
       auto rawInstruction = std::make_shared<IRRawInstruction>("getstatic java/lang/System.out java/io/PrintStream");
       currentFunction->instructions.push_back(rawInstruction);
@@ -160,8 +174,16 @@ void BytecodeIRGeneratorListener::exitFunction_call(cgullParser::Function_callCo
   if (scope) {
     // the expressions in the parameters are now evaluated and on the stack, so put a function call instruction
     // on the stack
-    auto functionSymbol = scope->resolve(ctx->IDENTIFIER()->getText());
-    auto calledFunction = std::dynamic_pointer_cast<FunctionSymbol>(functionSymbol);
+    auto constructor = constructorMap.find(ctx->IDENTIFIER()->getText());
+    std::shared_ptr<FunctionSymbol> calledFunction;
+    if (constructor != constructorMap.end()) {
+      calledFunction = constructor->second;
+    } else {
+      calledFunction = std::dynamic_pointer_cast<FunctionSymbol>(scope->resolve(ctx->IDENTIFIER()->getText()));
+    }
+    if (!calledFunction) {
+      throw std::runtime_error("Function not found: " + ctx->IDENTIFIER()->getText());
+    }
     // program will jump and handle it, for generating IR we are done here, just add the call instruction
     auto callInstruction = std::make_shared<IRCallInstruction>(calledFunction);
     currentFunction->instructions.push_back(callInstruction);
@@ -1626,17 +1648,28 @@ void BytecodeIRGeneratorListener::exitStruct_definition(cgullParser::Struct_defi
   }
   constructor->name = "<init>";
   constructor->parameters = structClass->variables;
+
+  // initialize the object
+  auto initInst = std::make_shared<IRRawInstruction>("aload 0");
+  constructor->instructions.push_back(initInst);
+  auto invokeInst = std::make_shared<IRRawInstruction>("invokespecial java/lang/Object.<init>()V");
+  constructor->instructions.push_back(invokeInst);
+
   // create the instructions to putfield for each variable
   for (int i = 0; i < structClass->variables.size(); i++) {
     auto variable = std::dynamic_pointer_cast<VariableSymbol>(structClass->variables[i]);
     if (!variable->isPrivate) {
+      // load in the object
+      auto thisInst = std::make_shared<IRRawInstruction>("aload 0");
+      constructor->instructions.push_back(thisInst);
       // load based on type
       if (variable->dataType->getKind() == Type::TypeKind::PRIMITIVE) {
         auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(variable->dataType);
-        auto loadInst = std::make_shared<IRRawInstruction>(getLoadInstruction(primitiveType) + " " + std::to_string(i));
+        auto loadInst =
+            std::make_shared<IRRawInstruction>(getLoadInstruction(primitiveType) + " " + std::to_string(i + 1));
         constructor->instructions.push_back(loadInst);
       } else {
-        auto loadInst = std::make_shared<IRRawInstruction>("aload " + std::to_string(i));
+        auto loadInst = std::make_shared<IRRawInstruction>("aload " + std::to_string(i + 1));
         constructor->instructions.push_back(loadInst);
       }
       // putfield
@@ -1645,6 +1678,7 @@ void BytecodeIRGeneratorListener::exitStruct_definition(cgullParser::Struct_defi
       constructor->instructions.push_back(putFieldInst);
     }
   }
+  constructor->instructions.push_back(std::make_shared<IRRawInstruction>("return"));
   // return void
   constructor->returnTypes.push_back(std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
   structClass->methods.push_back(constructor);

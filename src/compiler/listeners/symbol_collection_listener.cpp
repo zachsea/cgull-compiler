@@ -324,20 +324,6 @@ void SymbolCollectionListener::enterFunction_call(cgullParser::Function_callCont
   }
 }
 
-void SymbolCollectionListener::enterAllocate_struct(cgullParser::Allocate_structContext* ctx) {
-  // check that any identifiers inside the allocate struct are defined
-  for (auto child : ctx->children) {
-    if (auto varCtx = dynamic_cast<cgullParser::VariableContext*>(child)) {
-      std::string identifier = varCtx->IDENTIFIER()->getSymbol()->getText();
-      auto varSymbol = currentScope->resolve(identifier);
-      if (!varSymbol) {
-        errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, varCtx->getStart()->getLine(),
-                                  varCtx->getStart()->getCharPositionInLine(), "unresolved variable " + identifier);
-      }
-    }
-  }
-}
-
 void SymbolCollectionListener::enterCast_expression(cgullParser::Cast_expressionContext* ctx) {
   // check that any identifiers inside the cast expression are defined
   for (auto child : ctx->children) {

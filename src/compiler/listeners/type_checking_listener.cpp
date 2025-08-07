@@ -246,7 +246,18 @@ bool TypeCheckingListener::areTypesCompatible(const std::shared_ptr<Type>& sourc
     }
 
     // pointers MUST point to the same type otherwise
-    sourcePointedType->equals(targetPointedType);
+    return sourcePointedType->equals(targetPointedType);
+  }
+
+  // allow nullptr (void*) to be assigned to any user-defined type since they are references
+  if (sourcePointer) {
+    auto sourcePointedType = sourcePointer->getPointedType();
+    auto sourceVoidType = std::dynamic_pointer_cast<PrimitiveType>(sourcePointedType);
+    if (sourceVoidType && sourceVoidType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::VOID) {
+      if (targetType->getKind() == Type::TypeKind::USER_DEFINED) {
+        return true;
+      }
+    }
   }
 
   return false;
@@ -1192,8 +1203,6 @@ void TypeCheckingListener::exitAllocate_expression(cgullParser::Allocate_express
     setExpressionType(ctx, getExpressionType(ctx->allocate_primitive()));
   } else if (ctx->allocate_array()) {
     setExpressionType(ctx, getExpressionType(ctx->allocate_array()));
-  } else if (ctx->allocate_struct()) {
-    setExpressionType(ctx, getExpressionType(ctx->allocate_struct()));
   }
 }
 
@@ -1265,56 +1274,6 @@ void TypeCheckingListener::exitAllocate_array(cgullParser::Allocate_arrayContext
   }
 
   setExpressionType(ctx, baseType);
-}
-
-void TypeCheckingListener::exitAllocate_struct(cgullParser::Allocate_structContext* ctx) {
-  if (ctx->IDENTIFIER()) {
-    std::string structName = ctx->IDENTIFIER()->getSymbol()->getText();
-    auto structSymbol = currentScope->resolve(structName);
-    if (auto typeSymbol = std::dynamic_pointer_cast<TypeSymbol>(structSymbol)) {
-      // check if parameters match the struct definition (check if it resolves to the constructor)
-      std::vector<std::shared_ptr<Type>> parameters;
-      if (ctx->expression_list()) {
-        for (auto expr : ctx->expression_list()->expression()) {
-          auto paramType = getExpressionType(expr);
-          if (!paramType) {
-            errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
-                                      ctx->getStart()->getCharPositionInLine(),
-                                      "Cannot determine type of parameter in struct allocation");
-            setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
-            return;
-          }
-          parameters.push_back(paramType);
-        }
-      }
-      auto constructor = currentScope->resolveFunctionCall(structName, parameters);
-      // check that the parameters match the constructor
-      if (!constructor) {
-        errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
-                                  ctx->getStart()->getCharPositionInLine(),
-                                  "Cannot find constructor for struct '" + structName + "' with given parameters");
-        setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
-        return;
-      }
-      for (size_t i = 0; i < parameters.size(); i++) {
-        auto paramType = parameters[i];
-        auto expectedType = constructor->parameters[i]->dataType;
-        if (!areTypesCompatible(paramType, expectedType, ctx->expression_list()->expression()[i], ctx)) {
-          errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
-                                    ctx->getStart()->getCharPositionInLine(),
-                                    "Cannot pass parameter of type " + paramType->toString() +
-                                        " to constructor of type " + expectedType->toString());
-          setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
-          return;
-        }
-      }
-      setExpressionType(ctx, std::make_shared<PointerType>(typeSymbol->typeRepresentation));
-    } else {
-      errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, ctx->getStart()->getLine(),
-                                ctx->getStart()->getCharPositionInLine(), "Invalid struct type in allocation");
-      setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
-    }
-  }
 }
 
 void TypeCheckingListener::exitUnary_expression(cgullParser::Unary_expressionContext* ctx) {

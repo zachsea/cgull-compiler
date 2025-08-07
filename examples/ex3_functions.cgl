@@ -6,47 +6,47 @@
 
 struct Node {
   string value;
-  Node* next;
+  Node next;
 }
 
-fn printNodes(Node* head) -> void {
-  if (!head) {
+fn printNodes(Node head) -> void {
+  if (head == nullptr) {
     return;
   }
-  println(head->value);
+  println(head.value);
   // recursive call
-  printNodes(head->next);
+  printNodes(head.next);
 }
 
-// Node*, Node* is also valid for multiple return values
-fn getNeighbors(Node* head, string c) -> (Node*, Node*) {
-  Node* prev = nullptr;
-  Node* curr = head;
-  Node* next = nullptr;
+// Node, Node is also valid for multiple return values
+fn getNeighbors(Node head, string c) -> (Node, Node) {
+  Node prev = nullptr;
+  Node curr = head;
+  Node next = nullptr;
   // while loop, similar to Golang's for loop
   for (curr != nullptr) {
-    if (curr->value == c) {
-      next = curr->next;
+    if (curr.value == c) {
+      next = curr.next;
       break;
     }
     prev = curr;
-    curr = curr->next;
+    curr = curr.next;
   }
   return (prev, next);
 }
 
 fn main() -> int {
   // dynamic memory allocation
-  Node* head = allocate Node("A", nullptr);
-  head->next = allocate Node("B", nullptr);
-  head->next->next = allocate Node("C", nullptr);
-  head->next->next->next = nullptr;
+  Node head = Node("A", nullptr);
+  head.next = Node("B", nullptr);
+  head.next.next = Node("C", nullptr);
+  head.next.next.next = nullptr;
 
   printNodes(head);
-  Node* prev, Node* next = getNeighbors(head, "B");
+  Node prev, Node next = getNeighbors(head, "B");
 
-  println("Previous of B: " + (if (prev) prev->value else " "));
-  println("Next of B: " + (if (next) next->value else " "));
+  println("Previous of B: " + (if (prev != nullptr) prev.value else " "));
+  println("Next of B: " + (if (next != nullptr) next.value else " "));
 
   return 0;
 }

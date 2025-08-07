@@ -1,16 +1,11 @@
-fn printIntPtrArr(int*[][][] arr, int size1, int size2, int size3) {
-  for (int i = 0; i < size1; i++) {
-    for (int j = 0; j < size2; j++) {
-      for (int k = 0; k < size3; k++) {
-        println(*arr[i][j][k]);
-      }
-    }
-  }
+struct Point {
+  int x;
+  int y;
+  int[] z;
 }
 
 fn main() {
-  int* ptr = allocate int(5);
-  int*[][][] b = allocate int*{{{ptr, ptr, ptr}, {ptr, ptr, ptr}}, {{ptr, ptr, ptr}, {ptr, ptr, ptr}}};
-  *ptr = 1;
-  printIntPtrArr(b, 2, 2, 3);
+  int[] z = allocate int[10];
+  Point p = Point(1, 2, z);
+  return;
 }
