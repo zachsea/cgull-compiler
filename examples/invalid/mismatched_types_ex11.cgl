@@ -1,32 +1,25 @@
-struct extraStructToShowBadDereferencing {
-  int* a;
-}
-
-fn main() -> int {
+fn main() {
   // mismatched type
   int* ptr = allocate float(5);
   // mismatched type
-  float* ptr2 = allocate int;
+  float* ptr2 = allocate int(241);
   *ptr = 10;
 
-  int stackVar = 10;
-  int* stackPtr = &stackVar;
-  println("Address of stackVar: " + stackPtr);
-
-  println("Value of stackVar: " + *stackPtr);
   println("Value of ptr: " + *ptr);
   println("Value of ptr2: " + *ptr2);
 
   // mismatched type
-  string andResult = (ptr as int) & (ptr2 as int);
-  println("Bitwise actions on the pointer addresses p1 " + ptr + " and p2 " + ptr2);
-  println("Bitwise AND: " + andResult);
+  int andResult = ((ptr as int) & (ptr2 as int)) as string;
+  int orResult = (ptr as int) | (ptr2 as int);
+  int xorResult = (ptr as int) ^ (ptr2 as int);
+  int notResult = ~(ptr as int);
 
-  // mismatched field operator
-  extraStructToShowBadDereferencing* extraStruct = allocate extraStructToShowBadDereferencing(nullptr);
-  extraStruct->a = allocate int(5);
-  extraStruct.a = 5;
+  println("Bitwise actions on the pointer hashes p1 " + (ptr as int) + " and p2 " + (ptr2 as int));
+  println("Bitwise AND: " + andResult);
+  println("Bitwise OR: " + orResult);
+  println("Bitwise XOR: " + xorResult);
+  println("Bitwise NOT (ptr): " + notResult);
 
   // mismatched return type
-  return "done";
+  return 0;
 }
