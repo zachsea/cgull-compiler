@@ -429,26 +429,52 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
         }
         return;
       }
-
-      if (ctx->EQUAL_OP()) {
-        auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmpeq " + trueLabel);
-        currentFunction->instructions.push_back(rawInstruction);
-      } else if (ctx->NOT_EQUAL_OP()) {
-        auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmpne " + trueLabel);
-        currentFunction->instructions.push_back(rawInstruction);
-      } else if (ctx->LESS_OP()) {
-        auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmplt " + trueLabel);
-        currentFunction->instructions.push_back(rawInstruction);
-      } else if (ctx->GREATER_OP()) {
-        auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmpgt " + trueLabel);
-        currentFunction->instructions.push_back(rawInstruction);
-      } else if (ctx->LESS_EQUAL_OP()) {
-        auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmple " + trueLabel);
-        currentFunction->instructions.push_back(rawInstruction);
-      } else if (ctx->GREATER_EQUAL_OP()) {
-        auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmpge " + trueLabel);
-        currentFunction->instructions.push_back(rawInstruction);
+      if (leftPrimitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::INT) {
+        if (ctx->EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmpeq " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->NOT_EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmpne " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->LESS_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmplt " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->GREATER_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmpgt " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->LESS_EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmple " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->GREATER_EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmpge " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        }
+      } else if (leftPrimitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::FLOAT) {
+        auto rawCmpInstruction = std::make_shared<IRRawInstruction>("fcmpg");
+        currentFunction->instructions.push_back(rawCmpInstruction);
+        if (ctx->EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("ifeq " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->NOT_EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("ifne " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->LESS_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("iflt " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->GREATER_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("ifgt " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->LESS_EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("ifle " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->GREATER_EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("ifge " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        }
+      } else {
+        throw std::runtime_error("Unsupported comparison operation for type: " + leftPrimitiveType->toString());
       }
+
       // we didn't jump to trueLabel, so the condition is false
       auto pushFalseInstruction = std::make_shared<IRRawInstruction>("iconst 0");
       currentFunction->instructions.push_back(pushFalseInstruction);
