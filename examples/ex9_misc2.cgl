@@ -18,11 +18,12 @@ struct Game {
 }
 
 fn main() {
-  int gameSize = 3;
+  int gameSize = 4;
   Game[] games = allocate Game[gameSize];
   games[0] = Game(0, "Balatro", "Rogue-like", 10);
   games[1] = Game(1, "Doom", "FPS", 9);
   games[2] = Game(2, "Half-Life", "FPS", 10);
+  games[3] = Game(3, "Some Terrible Game", "RPG", 1);
 
   // sort ascending via bubble sort
   for (int i = 0; i < gameSize; i++) {
@@ -41,16 +42,21 @@ fn main() {
 }
 
 /* expected output:
+ * Game ID: 3
+ * Game Name: Some Terrible Game
+ * Game Genre: RPG
+ * Game Rating: 1
+ *
  * Game ID: 1
  * Game Name: Doom
  * Game Genre: FPS
  * Game Rating: 9
-
+ *
  * Game ID: 0
  * Game Name: Balatro
  * Game Genre: Rogue-like
  * Game Rating: 10
-
+ *
  * Game ID: 2
  * Game Name: Half-Life
  * Game Genre: FPS

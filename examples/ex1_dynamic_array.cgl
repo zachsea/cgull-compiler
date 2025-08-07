@@ -35,8 +35,7 @@ struct IntVector {
       // ternary
       resize(if (capacity > 0) capacity * 2 else 1);
     }
-    data[size] = v;
-    size = size + 1; // fix postfix?????
+    data[size++] = v;
   }
 
 

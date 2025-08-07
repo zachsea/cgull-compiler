@@ -1210,16 +1210,24 @@ void BytecodeIRGeneratorListener::exitUnary_expression(cgullParser::Unary_expres
           auto rawInstructionSubtract = std::make_shared<IRRawInstruction>(prefix + "sub");
           currentFunction->instructions.push_back(rawInstructionSubtract);
         }
-        // store the result back in the variable (duplicate the value on the stack)
-        auto rawInstructionDup = std::make_shared<IRRawInstruction>("dup");
-        currentFunction->instructions.push_back(rawInstructionDup);
         auto scope = getCurrentScope(ctx);
-        // kinda janky, but type checking should guarantee this is an identifier for now...
         std::string identifier = ctx->expression()->getText();
         auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(scope->resolve(identifier));
-        auto rawInstructionStore = std::make_shared<IRRawInstruction>(getStoreInstruction(primitiveType) + " " +
-                                                                      std::to_string(varSymbol->localIndex));
-        currentFunction->instructions.push_back(rawInstructionStore);
+        // store the result back in the variable (duplicate the value on the stack)
+        auto rawInstructionDup = std::make_shared<IRRawInstruction>(varSymbol->isStructMember ? "dup_x1" : "dup");
+        currentFunction->instructions.push_back(rawInstructionDup);
+        // kinda janky, but type checking should guarantee this is an identifier for now...
+        // use putfield for structs
+        if (varSymbol->isStructMember) {
+          auto putField = std::make_shared<IRRawInstruction>("putfield " + varSymbol->parentStructType->name + "." +
+                                                             varSymbol->name + " " +
+                                                             BytecodeCompiler::typeToJVMType(primitiveType));
+          currentFunction->instructions.push_back(putField);
+        } else {
+          auto rawInstructionStore = std::make_shared<IRRawInstruction>(getStoreInstruction(primitiveType) + " " +
+                                                                        std::to_string(varSymbol->localIndex));
+          currentFunction->instructions.push_back(rawInstructionStore);
+        }
       } else {
         throw std::runtime_error("Unsupported unary expression type: " + expressionType->toString());
       }
@@ -1249,6 +1257,7 @@ void BytecodeIRGeneratorListener::exitPostfix_expression(cgullParser::Postfix_ex
         if (varSymbol->isStructMember) {
           auto loadThis = std::make_shared<IRRawInstruction>("aload 0");
           currentFunction->instructions.push_back(loadThis);
+          currentFunction->instructions.push_back(loadThis);
           auto getField =
               std::make_shared<IRRawInstruction>("getfield " + varSymbol->parentStructType->name + "." +
                                                  varSymbol->name + " " + BytecodeCompiler::typeToJVMType(type));
@@ -1260,7 +1269,7 @@ void BytecodeIRGeneratorListener::exitPostfix_expression(cgullParser::Postfix_ex
         }
 
         // duplicate the value on the stack
-        auto dupInst = std::make_shared<IRRawInstruction>("dup");
+        auto dupInst = std::make_shared<IRRawInstruction>(varSymbol->isStructMember ? "dup_x1" : "dup");
         currentFunction->instructions.push_back(dupInst);
 
         // increment or decrement the value and store it back in the variable
