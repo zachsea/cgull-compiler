@@ -26,7 +26,7 @@ It should describe everything you need to know, but the TL;DR if you are struggl
 - Assemble the produced .jasm files with the jasm tool
 - Run the java runtime with the Main class as the argument and the out directory as the classpath
 
-See [Manual Building/Assembling/Running](#manual-buildingassemblingrunning) for more details about specific commands.
+**See [Manual Building/Assembling/Running](#manual-buildingassemblingrunning) for more details about specific commands.**
 
 ## Building
 
@@ -47,24 +47,31 @@ cd src
 
 ## Manual Building/Assembling/Running
 
-If you have issues with the bootstrap makefile or run.sh script in general, you can use the following commands to build and run the project manually with cmake.
+If you have issues with the bootstrap makefile or run.sh script in general, you can use the following commands to build and run the project manually.
 
 ```bash
-# generate makefile
+# --- compiling cgull ---
+# generate makefile w/ cmake
 cd src
 mkdir build
 cd build
 cmake ..
 # build the project
 make
-# run the compiler
+
+# --- running the cgull compiler ---
 cd ..
 ./build/cgull <source_file> [--lexer | --parser | --semantic]
-# run the assembler and java runtime, if applicable
+
+# --- running the jasm assembler ---
 # if on windows, use `jasm.bat` instead of `jasm`
-# run the assembler for EVERY .jasm file in the out directory (could do with a loop or something) for example:
+# run the assembler for EVERY .jasm file in the out directory (could do with a loop or something)
+# !!! note that the input files are relative to the input directory specified with the i argument
 ./thirdparty/jasm/bin/jasm -i out -o out Main.jasm
 ./thirdparty/jasm/bin/jasm -i out -o out IntReference.jasm
 ./thirdparty/jasm/bin/jasm -i out -o out StringReference.jasm
+
+# --- running the assembled class files ---
+# run the class files, with the classpath being the out folder we just assembled the files in
 java -cp out Main
 ```
