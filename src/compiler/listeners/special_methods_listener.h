@@ -18,8 +18,6 @@ private:
 
   void validateToStringMethod(const std::shared_ptr<Scope>& structScope, const std::string& structName, int line,
                               int column);
-  void validateDestructMethod(const std::shared_ptr<Scope>& structScope, const std::string& structName, int line,
-                              int column);
   void validateNoUnsupportedSpecialMethods(const std::shared_ptr<Scope>& structScope, const std::string& structName,
                                            int line, int column);
   void addDefaultToStringMethod(const std::shared_ptr<Scope>& structScope, const std::string& structName);

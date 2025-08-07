@@ -1,0 +1,87 @@
+/* Example #14 - Boolean Operations and Nested Expressions
+ * Shows off nested expressions and boolean operations.
+ */
+
+fn isEven(int x) -> bool {
+  return x % 2 == 0;
+}
+
+fn shiftsLeftForNoReason(int x) -> int {
+  return x << 1;
+}
+
+fn main() {
+  const bool c = true;
+  const string separator = "--------------------------------";
+  bool a;
+  bool b;
+
+  print("Input a value for boolean a (0/1): ");
+  a = (read()) as int == 1;
+
+  print("Input a value for boolean b (0/1): ");
+  b = (read()) as int == 1;
+
+  println(separator);
+
+  println("a && b: " + (a && b));
+  println("a || b: " + (a || b));
+  println("!a: " + !a);
+
+  if (a != b) {
+    println("a and b are not equal");
+  } else {
+    println("a and b are equal");
+  }
+
+  println(separator);
+
+  int x;
+  int y;
+  print("Input a value for int x: ");
+  x = (read()) as int;
+  print("Input a value for int y: ");
+  y = (read()) as int;
+  println(separator);
+
+  println("x > y: " + (x > y));
+  println("x < y: " + (x < y));
+  println("x >= y: " + (x >= y));
+  println("x <= y: " + (x <= y));
+  println("x == y: " + (x == y));
+  println("x != y: " + (x != y));
+
+  println(separator);
+  println("constant c: " + c);
+
+  println("c && a: " + (c && a));
+  println("c || a: " + (c || a));
+
+  // nested expressions with function calls, arithmetic, and logical expressions
+  println("shiftsLeftForNoReason(if (isEven(x) && !a) (x * 2) else (x << 4)): " + shiftsLeftForNoReason(if (isEven(x) && !a) (x * 2) else (x << 4)));
+}
+
+/* expected output (one possible output):
+ * Input a value for boolean a (0/1): 1
+ * Input a value for boolean b (0/1): 1
+ * --------------------------------
+ * a && b: true
+ * a || b: true
+ * !a: false
+ * a and b are equal
+ * --------------------------------
+ * Input a value for int x: 1
+ * Input a value for int y: 1
+ * --------------------------------
+ * x > y: false
+ * x < y: false
+ * x >= y: true
+ * x <= y: true
+ * x == y: true
+ * x != y: false
+ * --------------------------------
+ * constant c: true
+ * c && a: true
+ * c || a: true
+ * shiftsLeftForNoReason(if (isEven(x) && !a) (x * 2) else (x << 4)): 32
+ */

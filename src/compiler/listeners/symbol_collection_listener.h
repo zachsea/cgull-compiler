@@ -18,9 +18,6 @@ public:
   virtual void enterVariable_declaration(cgullParser::Variable_declarationContext* ctx) override;
   virtual void exitVariable_declaration(cgullParser::Variable_declarationContext* ctx) override;
 
-  virtual void enterDestructuring_item(cgullParser::Destructuring_itemContext* ctx) override;
-  virtual void exitDestructuring_item(cgullParser::Destructuring_itemContext* ctx) override;
-
   /* scope related */
 
   virtual void enterProgram(cgullParser::ProgramContext* ctx) override;

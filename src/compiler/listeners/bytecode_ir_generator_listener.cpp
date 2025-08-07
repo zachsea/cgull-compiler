@@ -643,6 +643,16 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
           auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmpge " + trueLabel);
           currentFunction->instructions.push_back(rawInstruction);
         }
+      } else if (leftPrimitiveType && leftPrimitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::BOOLEAN) {
+        if (ctx->EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmpeq " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->NOT_EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmpne " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else {
+          throw std::runtime_error("Unsupported comparison operation for boolean type");
+        }
       } else if (leftPrimitiveType && leftPrimitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::FLOAT) {
         auto rawCmpInstruction = std::make_shared<IRRawInstruction>("fcmpg");
         currentFunction->instructions.push_back(rawCmpInstruction);

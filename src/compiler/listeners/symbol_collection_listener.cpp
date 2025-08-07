@@ -75,23 +75,6 @@ void SymbolCollectionListener::exitVariable_declaration(cgullParser::Variable_de
   }
 }
 
-void SymbolCollectionListener::enterDestructuring_item(cgullParser::Destructuring_itemContext* ctx) {
-  std::string identifier = ctx->IDENTIFIER()->getSymbol()->getText();
-  bool isConst = ctx->CONST() != nullptr;
-  int line = ctx->IDENTIFIER()->getSymbol()->getLine();
-  int column = ctx->IDENTIFIER()->getSymbol()->getCharPositionInLine();
-
-  createAndRegisterVariableSymbol(identifier, ctx->type(), isConst, line, column);
-}
-void SymbolCollectionListener::exitDestructuring_item(cgullParser::Destructuring_itemContext* ctx) {
-  // mark as defined if assigned an expression
-  auto varSymbol = currentScope->resolve(ctx->IDENTIFIER()->getText());
-  if (varSymbol) {
-    varSymbol->definedAtLine = ctx->IDENTIFIER()->getSymbol()->getLine();
-    varSymbol->definedAtColumn = ctx->IDENTIFIER()->getSymbol()->getCharPositionInLine();
-  }
-}
-
 void SymbolCollectionListener::enterAccess_block(cgullParser::Access_blockContext* ctx) {
   inPrivateScope = ctx->PRIVATE() != nullptr;
 }
@@ -194,21 +177,7 @@ void SymbolCollectionListener::enterFunction_definition(cgullParser::Function_de
     functionSymbol->isStructMethod = true; // Mark this as a struct method
   }
 
-  if (ctx->type_list()) {
-    // one type that's a tuple of types, in fuuture maybe allow multiple return types
-    std::vector<std::shared_ptr<Type>> returnTypes;
-    for (auto typeCtx : ctx->type_list()->type()) {
-      auto resolvedType = resolveType(typeCtx);
-      if (resolvedType) {
-        returnTypes.push_back(resolvedType);
-      } else {
-        errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, line, column,
-                                  "unresolved type " + typeCtx->getText());
-        returnTypes.push_back(std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
-      }
-    }
-    functionSymbol->returnTypes.push_back(std::make_shared<TupleType>(returnTypes));
-  } else if (ctx->type()) {
+  if (ctx->type()) {
     auto resolvedType = resolveType(ctx->type());
     if (resolvedType) {
       functionSymbol->returnTypes.push_back(resolvedType);
@@ -381,19 +350,6 @@ std::shared_ptr<Type> SymbolCollectionListener::resolveType(cgullParser::TypeCon
     if (auto typeSymbol = std::dynamic_pointer_cast<TypeSymbol>(resolvedTypeSymbol)) {
       baseType = typeSymbol->typeRepresentation;
     }
-  } else if (typeCtx->tuple_type()) {
-    std::vector<std::shared_ptr<Type>> elementTypes;
-    if (typeCtx->tuple_type()->type_list()) {
-      for (auto typectx : typeCtx->tuple_type()->type_list()->type()) {
-        auto resolvedType = resolveType(typectx);
-        if (resolvedType) {
-          elementTypes.push_back(resolvedType);
-        } else {
-          return nullptr;
-        }
-      }
-    }
-    baseType = std::make_shared<TupleType>(elementTypes);
   }
 
   if (!baseType) {

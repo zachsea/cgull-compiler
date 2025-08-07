@@ -1,0 +1,69 @@
+/* Example #6 - Structs/Tuples
+ * This example showcases the composite data types in cgull.
+ * It demonstrates structs and access modifiers
+ * Structs offer a way to associate additional scope with function(s).
+ * "Default" constructors initialize public members in order of appearance.
+ */
+
+struct IntPair {
+  int x;
+  int y;
+}
+
+struct Point {
+  // public is redundant
+  public string name = "Point";
+  private {
+    IntPair coords;
+  }
+  // or private per member
+  private float secret = 0.0;
+
+  public {
+    fn getCoords() -> IntPair {
+      return coords;
+    }
+    fn setCoords(IntPair p) {
+      coords = p;
+    }
+    fn getSecret() -> float {
+      return secret;
+    }
+    fn setSecret(float s) {
+      secret = s;
+    }
+  }
+}
+
+fn returnsPair() -> IntPair {
+  return IntPair(1, 2);
+}
+
+fn main() {
+  Point p1 = Point("Point");
+  // using initialize statement
+  Point p2 = Point("Point 2");
+  p1.setCoords(IntPair(1, 2));
+  p2.setCoords(IntPair(3, 4));
+
+  IntPair p1Coords = p1.getCoords();
+  IntPair p2Coords = p2.getCoords();
+  println("p1: " + p1.name + " (" + p1Coords.x + ", " + p1Coords.y + ")");
+  println("p2: " + p2.name + " (" + p2Coords.x + ", " + p2Coords.y + ")");
+
+  // multiple values from function can be placed in a tuple, too.
+  // tuple indexing is 0-based like arrays
+  IntPair test = returnsPair();
+  println("test: (" + test.x + ", " + test.y + ")");
+
+  p1.setSecret(1.0);
+  p2.setSecret(2.0);
+  println("p1 secret: " + p1.getSecret());
+  println("p2 secret: " + p2.getSecret());
+}
+
+/* expected output:
+ * p1: Point (1, 2)
+ * p2: Point 2 (3, 4)
+ * test: (1, 2)
+ */

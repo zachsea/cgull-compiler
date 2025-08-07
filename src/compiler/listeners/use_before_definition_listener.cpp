@@ -28,8 +28,6 @@ void UseBeforeDefinitionListener::enterVariable(cgullParser::VariableContext* ct
     if (assign->variable() == ctx) {
       isAssignmentTarget = true;
     }
-  } else if (auto destruct = dynamic_cast<cgullParser::Destructuring_itemContext*>(parent)) {
-    isAssignmentTarget = true;
   }
 
   if (isAssignmentTarget)
@@ -75,16 +73,6 @@ void UseBeforeDefinitionListener::enterFunction_definition(cgullParser::Function
   if (ctx->FN_SPECIAL())
     name = ctx->FN_SPECIAL()->getText() + name;
   auto symbol = currentScope && currentScope->parent ? currentScope->parent->resolve(name) : nullptr;
-  if (symbol)
-    symbol->isDefined = true;
-}
-
-void UseBeforeDefinitionListener::enterDestructuring_item(cgullParser::Destructuring_itemContext* ctx) {
-  // mark variable as defined at this point
-  if (!ctx->IDENTIFIER())
-    return;
-  std::string name = ctx->IDENTIFIER()->getSymbol()->getText();
-  auto symbol = currentScope ? currentScope->resolve(name) : nullptr;
   if (symbol)
     symbol->isDefined = true;
 }

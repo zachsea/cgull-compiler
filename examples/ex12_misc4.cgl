@@ -1,31 +1,40 @@
 /* Example #12 - Miscellaneous 4
  * Due to feature removal, the following is just a random example.
- * This example showcases more usages of tuples.
+ * This example showcases more usages of structs as pure data containers.
  */
 
-fn swap(int a, int b) -> (int, int) {
-  return (b, a);
+struct Row {
+  int x;
+  int y;
+  float z;
 }
 
-fn multiply(tuple<int, int, float> t1, tuple<int, int, float> t2) -> (int, int, float) {
-  return (t1[0] * t2[0], t1[1] * t2[1], t1[2] * t2[2]);
+struct Pair {
+  int a;
+  int b;
 }
 
-fn main() -> int {
+fn swap(Pair p) -> Pair {
+  return Pair(p.b, p.a);
+}
+
+fn multiply(Row t1, Row t2) -> Row {
+  return Row(t1.x * t2.x, t1.y * t2.y, t1.z * t2.z);
+}
+
+fn main() {
   int a = 5;
   int b = 10;
-  tuple<int, int> swapped = swap(a, b);
+  Pair swapped = swap(Pair(a, b));
   println("Original values: " + a + ", " + b);
-  println("Swapped values: " + swapped[0] + ", " + swapped[1] + "\n");
+  println("Swapped values: " + swapped.a + ", " + swapped.b);
 
-  tuple<int, int, float> t1 = (1, 2, 3.0);
-  tuple<int, int, float> t2 = (4, 5, 6.0);
-  tuple<int, int, float> result = multiply(t1, t2);
-  println("t1: " + t1[0] + ", " + t1[1] + ", " + t1[2]);
-  println("t2: " + t2[0] + ", " + t2[1] + ", " + t2[2]);
-  println("Result: " + result[0] + ", " + result[1] + ", " + result[2]);
-
-  return 0;
+  Row t1 = Row(1, 2, 3.0);
+  Row t2 = Row(4, 5, 6.0);
+  Row result = multiply(t1, t2);
+  println("t1: " + t1.x + ", " + t1.y + ", " + t1.z);
+  println("t2: " + t2.x + ", " + t2.y + ", " + t2.z);
+  println("Result: " + result.x + ", " + result.y + ", " + result.z);
 }
 
 /* expected output:

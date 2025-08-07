@@ -11,14 +11,15 @@ See the [formal grammar](src/grammar/cgull.g4) for the formal definition of the 
 - [x] Example 3: [ex3_functions.cgl](examples/ex3_functions.cgl)
 - [x] Example 4: [ex4_branching.cgl](examples/ex4_branching.cgl)
 - [x] Example 5: [ex5_looping.cgl](examples/ex5_looping.cgl)
-- [ ] Example 6: [ex6_structs_tuples.cgl](examples/ex6_structs_tuples.cgl)
+- [x] Example 6: [ex6_math_structs.cgl](examples/ex6_math_structs.cgl)
 - [x] Example 7: [ex7_builtin.cgl](examples/ex7_builtin.cgl)
 - [x] Example 8: [ex8_types_and_casting.cgl](examples/ex8_types_and_casting.cgl)
 - [ ] Example 9: [ex9_misc2.cgl](examples/ex9_misc2.cgl)
 - [x] Example 10: [ex10_misc3.cgl](examples/ex10_misc3.cgl)
 - [x] Example 11: [ex11_operations.cgl](examples/ex11_operations.cgl)
-- [ ] Example 12: [ex12_misc4.cgl](examples/ex12_misc4.cgl)
+- [x] Example 12: [ex12_misc4.cgl](examples/ex12_misc4.cgl)
 - [x] Example 13: [ex13_misc5.cgl](examples/ex13_misc5.cgl)
+- [x] Example 14: [ex14_bool_ops_nested.cgl](examples/ex14_bool_ops_nested.cgl)
 
 ## Temporary note for grader
 

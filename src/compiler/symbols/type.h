@@ -11,7 +11,7 @@ class TypeSymbol;
 
 class Type {
 public:
-  enum class TypeKind { PRIMITIVE, USER_DEFINED, ARRAY, TUPLE, POINTER, UNRESOLVED };
+  enum class TypeKind { PRIMITIVE, USER_DEFINED, ARRAY, POINTER, UNRESOLVED };
 
   Type(TypeKind kind);
   virtual ~Type() = default;
@@ -66,16 +66,6 @@ public:
 
 private:
   std::shared_ptr<Type> elementType;
-};
-
-class TupleType : public Type {
-public:
-  std::vector<std::shared_ptr<Type>> elementTypes;
-
-  TupleType(const std::vector<std::shared_ptr<Type>>& elementTypes);
-  const std::vector<std::shared_ptr<Type>>& getElementTypes() const;
-  std::string toString() const override;
-  bool equals(const std::shared_ptr<Type>& other) const override;
 };
 
 class PointerType : public Type {

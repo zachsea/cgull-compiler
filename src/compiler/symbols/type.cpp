@@ -93,44 +93,6 @@ int ArrayType::getDimensions() const {
 
 std::string ArrayType::toString() const { return elementType->toString() + "[]"; }
 
-TupleType::TupleType(const std::vector<std::shared_ptr<Type>>& elementTypes)
-    : Type(TypeKind::TUPLE), elementTypes(elementTypes) {}
-
-const std::vector<std::shared_ptr<Type>>& TupleType::getElementTypes() const { return elementTypes; }
-
-bool TupleType::equals(const std::shared_ptr<Type>& other) const {
-  if (other == nullptr) {
-    return false;
-  }
-  if (other->getKind() != TypeKind::TUPLE) {
-    return false;
-  }
-
-  auto otherTuple = std::dynamic_pointer_cast<TupleType>(other);
-  if (elementTypes.size() != otherTuple->elementTypes.size()) {
-    return false;
-  }
-
-  for (size_t i = 0; i < elementTypes.size(); ++i) {
-    if (!elementTypes[i]->equals(otherTuple->elementTypes[i])) {
-      return false;
-    }
-  }
-  return true;
-}
-
-std::string TupleType::toString() const {
-  std::stringstream ss;
-  ss << "tuple<";
-  for (size_t i = 0; i < elementTypes.size(); ++i) {
-    if (i > 0)
-      ss << ", ";
-    ss << elementTypes[i]->toString();
-  }
-  ss << ">";
-  return ss.str();
-}
-
 PointerType::PointerType(std::shared_ptr<Type> pointeeType) : Type(TypeKind::POINTER), pointeeType(pointeeType) {}
 
 std::shared_ptr<Type> PointerType::getPointedType() const { return pointeeType; }

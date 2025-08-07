@@ -77,7 +77,6 @@ private:
   void exitDereference_expression(cgullParser::Dereference_expressionContext* ctx) override;
   void exitDereferenceable(cgullParser::DereferenceableContext* ctx) override;
 
-  void exitTuple_expression(cgullParser::Tuple_expressionContext* ctx) override;
   void exitArray_expression(cgullParser::Array_expressionContext* ctx) override;
   void exitAllocate_expression(cgullParser::Allocate_expressionContext* ctx) override;
   void exitAllocate_primitive(cgullParser::Allocate_primitiveContext* ctx) override;
@@ -92,9 +91,7 @@ private:
   void enterFunction_definition(cgullParser::Function_definitionContext* ctx) override;
   void exitFunction_definition(cgullParser::Function_definitionContext* ctx) override;
   void exitReturn_statement(cgullParser::Return_statementContext* ctx) override;
-
-  void exitDestructuring_item(cgullParser::Destructuring_itemContext* ctx) override;
-  void exitDestructuring_statement(cgullParser::Destructuring_statementContext* ctx) override;
+  ;
 
   std::shared_ptr<Type> checkAssignmentCompatibility(std::shared_ptr<Type> leftType, std::shared_ptr<Type> rightType,
                                                      antlr4::ParserRuleContext* ctx);
