@@ -84,6 +84,13 @@ bool ArrayType::equals(const std::shared_ptr<Type>& other) const {
   return elementType->equals(otherArray->elementType);
 }
 
+int ArrayType::getDimensions() const {
+  if (elementType->getKind() == TypeKind::ARRAY) {
+    return 1 + std::dynamic_pointer_cast<ArrayType>(elementType)->getDimensions();
+  }
+  return 1;
+}
+
 std::string ArrayType::toString() const { return elementType->toString() + "[]"; }
 
 TupleType::TupleType(const std::vector<std::shared_ptr<Type>>& elementTypes)
@@ -139,6 +146,9 @@ bool PointerType::equals(const std::shared_ptr<Type>& other) const {
 
 std::string PointerType::toString() const {
   auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(pointeeType);
+  if (!primitiveType) {
+    return "UnknownReference";
+  }
   switch (primitiveType->getPrimitiveKind()) {
   case PrimitiveType::PrimitiveKind::INT:
     return "IntReference";

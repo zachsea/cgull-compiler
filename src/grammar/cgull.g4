@@ -270,7 +270,7 @@ break_statement
 /* ----- types ----- */
 
 type
-    : (primitive_type | user_defined_type | tuple_type) array_suffix* '*'?
+    : (primitive_type | user_defined_type | tuple_type) '*'? array_suffix*
     ;
 
 array_suffix

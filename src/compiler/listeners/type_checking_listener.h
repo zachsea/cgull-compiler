@@ -74,6 +74,7 @@ private:
 
   void exitCast_expression(cgullParser::Cast_expressionContext* ctx) override;
   void exitDereference_expression(cgullParser::Dereference_expressionContext* ctx) override;
+  void exitDereferenceable(cgullParser::DereferenceableContext* ctx) override;
 
   void exitTuple_expression(cgullParser::Tuple_expressionContext* ctx) override;
   void exitArray_expression(cgullParser::Array_expressionContext* ctx) override;

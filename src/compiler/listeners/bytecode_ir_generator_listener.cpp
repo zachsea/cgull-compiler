@@ -95,7 +95,6 @@ void BytecodeIRGeneratorListener::enterProgram(cgullParser::ProgramContext* ctx)
     classes.push_back(mainClass);
     currentClassStack.push(mainClass);
   } else {
-    // replace with error reporter
     throw std::runtime_error("No scope found for program context");
   }
 }
@@ -116,7 +115,6 @@ void BytecodeIRGeneratorListener::enterFunction_definition(cgullParser::Function
     auto currentClass = currentClassStack.top();
     currentClass->methods.push_back(currentFunction);
   } else {
-    // replace with error reporter
     throw std::runtime_error("No scope found for function definition context");
   }
 }
@@ -129,9 +127,14 @@ void BytecodeIRGeneratorListener::exitFunction_definition(cgullParser::Function_
 
 void BytecodeIRGeneratorListener::enterParameter(cgullParser::ParameterContext* ctx) {
   // assign a local index to the parameter
-  auto parameterSymbol =
-      std::dynamic_pointer_cast<VariableSymbol>(currentFunction->parameters[currentFunction->parameters.size() - 1]);
-  assignLocalIndex(parameterSymbol);
+  auto scope = getCurrentScope(ctx);
+  if (scope) {
+    auto parameterSymbol = scope->resolve(ctx->IDENTIFIER()->getText());
+    auto parameterVarSymbol = std::dynamic_pointer_cast<VariableSymbol>(parameterSymbol);
+    assignLocalIndex(parameterVarSymbol);
+  } else {
+    throw std::runtime_error("No scope found for parameter context");
+  }
 }
 
 void BytecodeIRGeneratorListener::enterFunction_call(cgullParser::Function_callContext* ctx) {
@@ -146,7 +149,6 @@ void BytecodeIRGeneratorListener::enterFunction_call(cgullParser::Function_callC
       currentFunction->instructions.push_back(rawInstruction);
     }
   } else {
-    // replace with error reporter
     throw std::runtime_error("No scope found for function call context");
   }
 }
@@ -162,7 +164,6 @@ void BytecodeIRGeneratorListener::exitFunction_call(cgullParser::Function_callCo
     auto callInstruction = std::make_shared<IRCallInstruction>(calledFunction);
     currentFunction->instructions.push_back(callInstruction);
   } else {
-    // replace with error reporter
     throw std::runtime_error("No scope found for function call context");
   }
 }
@@ -189,6 +190,23 @@ void BytecodeIRGeneratorListener::enterExpression(cgullParser::ExpressionContext
       // place label for the update expr
       auto labelInst = std::make_shared<IRRawInstruction>(labels.updateLabel + ":");
       currentFunction->instructions.push_back(labelInst);
+    }
+  }
+  // check if part of expression_list that is part of an array_expression, dup the array ref and place the index
+  auto expressionList = dynamic_cast<cgullParser::Expression_listContext*>(ctx->parent);
+  if (expressionList) {
+    auto arrayExpr = dynamic_cast<cgullParser::Array_expressionContext*>(expressionList->parent);
+    if (arrayExpr) {
+      auto rawInstruction = std::make_shared<IRRawInstruction>("dup");
+      currentFunction->instructions.push_back(rawInstruction);
+      // find the index of the expression in the expression list
+      for (size_t i = 0; i < expressionList->expression().size(); ++i) {
+        if (expressionList->expression(i) == ctx) {
+          auto indexInst = std::make_shared<IRRawInstruction>("ldc " + std::to_string(i));
+          currentFunction->instructions.push_back(indexInst);
+          break;
+        }
+      }
     }
   }
 }
@@ -283,6 +301,40 @@ void BytecodeIRGeneratorListener::exitExpression(cgullParser::ExpressionContext*
       // jump back to the conditional, we're exiting the update expr
       auto jumpInst = std::make_shared<IRRawInstruction>("goto " + labels.conditionLabel);
       currentFunction->instructions.push_back(jumpInst);
+    }
+  }
+  // check if parent is index_expression and not the last expression in the index_expression, if so place an aaload
+  // instruction
+  auto indexExpr = dynamic_cast<cgullParser::Index_expressionContext*>(parent);
+  if (indexExpr && indexExpr->expression(indexExpr->expression().size() - 1) != ctx) {
+    auto rawInstruction = std::make_shared<IRRawInstruction>("aaload");
+    currentFunction->instructions.push_back(rawInstruction);
+  }
+  // if its the last expression and not used in an assignment, load based on type (e.g. iaload, aaload, etc.)
+  if (indexExpr && indexExpr->expression(indexExpr->expression().size() - 1) == ctx &&
+      !dynamic_cast<cgullParser::Assignment_statementContext*>(ctx->parent->parent)) {
+    auto type = expressionTypes[indexExpr];
+    if (!type) {
+      throw std::runtime_error("Type not found for expression: " + indexExpr->getText());
+    }
+    auto rawInstruction = std::make_shared<IRRawInstruction>(getArrayOperationInstruction(type, false));
+    currentFunction->instructions.push_back(rawInstruction);
+  }
+  // check if part of expression_list that is part of an array_expression, we will need to store based on type
+  auto expressionList = dynamic_cast<cgullParser::Expression_listContext*>(ctx->parent);
+  if (expressionList) {
+    auto arrayExpr = dynamic_cast<cgullParser::Array_expressionContext*>(expressionList->parent);
+    if (arrayExpr) {
+      auto arrayType = std::dynamic_pointer_cast<ArrayType>(expressionTypes[arrayExpr]);
+      if (!arrayType) {
+        throw std::runtime_error("Type not found for expression: " + arrayExpr->getText());
+      }
+      auto type = arrayType->getElementType();
+      if (!type) {
+        throw std::runtime_error("Type not found for expression: " + arrayExpr->getText());
+      }
+      auto rawInstruction = std::make_shared<IRRawInstruction>(getArrayOperationInstruction(type, true));
+      currentFunction->instructions.push_back(rawInstruction);
     }
   }
 }
@@ -718,7 +770,8 @@ void BytecodeIRGeneratorListener::exitVariable_declaration(cgullParser::Variable
         currentFunction->instructions.push_back(storeInst);
       }
       auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
-      if (pointerType) {
+      auto arrayType = std::dynamic_pointer_cast<ArrayType>(type);
+      if (pointerType || arrayType) {
         auto storeInstruction = std::make_shared<IRRawInstruction>("astore " + std::to_string(varSymbol->localIndex));
         currentFunction->instructions.push_back(storeInstruction);
       }
@@ -737,8 +790,9 @@ void BytecodeIRGeneratorListener::exitVariable(cgullParser::VariableContext* ctx
       auto type = varSymbol->dataType;
       auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
       auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
+      auto arrayType = std::dynamic_pointer_cast<ArrayType>(type);
 
-      if (pointerType) {
+      if (pointerType || arrayType) {
         auto loadInstruction = std::make_shared<IRRawInstruction>("aload " + std::to_string(varSymbol->localIndex));
         currentFunction->instructions.push_back(loadInstruction);
       }
@@ -780,8 +834,9 @@ void BytecodeIRGeneratorListener::exitAssignment_statement(cgullParser::Assignme
         auto type = varSymbol->dataType;
         auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
         auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
+        auto arrayType = std::dynamic_pointer_cast<ArrayType>(type);
 
-        if (pointerType) {
+        if (pointerType || arrayType) {
           auto storeInstruction = std::make_shared<IRRawInstruction>("astore " + std::to_string(varSymbol->localIndex));
           currentFunction->instructions.push_back(storeInstruction);
         }
@@ -812,6 +867,11 @@ void BytecodeIRGeneratorListener::exitAssignment_statement(cgullParser::Assignme
         }
       }
     }
+  } else if (ctx->index_expression()) {
+    auto scope = getCurrentScope(ctx);
+    auto type = expressionTypes[ctx->index_expression()];
+    auto rawInstruction = std::make_shared<IRRawInstruction>(getArrayOperationInstruction(type, true));
+    currentFunction->instructions.push_back(rawInstruction);
   }
 }
 
@@ -1480,4 +1540,81 @@ void BytecodeIRGeneratorListener::enterDereference_expression(cgullParser::Deref
   if (parent && dynamic_cast<cgullParser::Assignment_statementContext*>(parent)) {
     dereferenceAssignment = true;
   }
+}
+
+void BytecodeIRGeneratorListener::exitAllocate_array(cgullParser::Allocate_arrayContext* ctx) {
+  auto arrayType = std::dynamic_pointer_cast<ArrayType>(expressionTypes[ctx]);
+  if (!arrayType) {
+    throw std::runtime_error("Invalid array type in allocation: " + ctx->type()->getText());
+  }
+  auto baseType = arrayType->getElementType();
+
+  if (ctx->expression().size() > 0) {
+    // all dimension sizes are on the stack
+    std::string typeString = BytecodeCompiler::typeToJVMType(arrayType);
+    std::cout << "typeString: " << typeString << std::endl;
+    auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(baseType);
+    auto newInst = std::make_shared<IRRawInstruction>("multianewarray " + typeString + " " +
+                                                      std::to_string(ctx->expression().size()));
+    currentFunction->instructions.push_back(newInst);
+  }
+}
+
+void BytecodeIRGeneratorListener::enterArray_expression(cgullParser::Array_expressionContext* ctx) {
+  auto arrayType = std::dynamic_pointer_cast<ArrayType>(expressionTypes[ctx]);
+  if (!arrayType) {
+    throw std::runtime_error("Invalid array type in allocation: " + ctx->getText());
+  }
+  // determine the array index counts from size of expression list
+  size_t indexCounts = ctx->expression_list()->expression().size();
+  auto sizeInstruction = std::make_shared<IRRawInstruction>("ldc " + std::to_string(indexCounts));
+  currentFunction->instructions.push_back(sizeInstruction);
+  std::string typeString = BytecodeCompiler::typeToJVMType(arrayType);
+  // the rest of the dimensions are initialized by the array expression
+  auto newInst = std::make_shared<IRRawInstruction>("multianewarray " + typeString + " 1");
+  currentFunction->instructions.push_back(newInst);
+}
+
+void BytecodeIRGeneratorListener::enterIndexable(cgullParser::IndexableContext* ctx) {
+  // load identifier based on resolved scope and type
+  auto scope = getCurrentScope(ctx);
+  std::string identifier = ctx->IDENTIFIER()->getText();
+  auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(scope->resolve(identifier));
+
+  if (varSymbol) {
+    auto type = varSymbol->dataType;
+    auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
+    auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
+    auto arrayType = std::dynamic_pointer_cast<ArrayType>(type);
+
+    if (pointerType || arrayType) {
+      auto loadInstruction = std::make_shared<IRRawInstruction>("aload " + std::to_string(varSymbol->localIndex));
+      currentFunction->instructions.push_back(loadInstruction);
+    }
+
+    if (primitiveType) {
+      // load value from the local variable onto the stack
+      auto loadInst = std::make_shared<IRRawInstruction>(getLoadInstruction(primitiveType) + " " +
+                                                         std::to_string(varSymbol->localIndex));
+      currentFunction->instructions.push_back(loadInst);
+    }
+  }
+}
+
+std::string BytecodeIRGeneratorListener::getArrayOperationInstruction(const std::shared_ptr<Type>& type, bool isStore) {
+  auto arrayType = std::dynamic_pointer_cast<ArrayType>(type);
+  auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
+  auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
+
+  if (arrayType || pointerType) {
+    return isStore ? "aastore" : "aaload";
+  } else if (primitiveType) {
+    auto primitiveKind = primitiveType->getPrimitiveKind();
+    std::string prefix = primitiveKind == PrimitiveType::PrimitiveKind::INT         ? "i"
+                         : (primitiveKind == PrimitiveType::PrimitiveKind::FLOAT)   ? "f"
+                         : (primitiveKind == PrimitiveType::PrimitiveKind::BOOLEAN) ? "b"
+                                                                                    : "a";
+    return prefix + (isStore ? "astore" : "aload");
+  }
+  throw std::runtime_error("Unsupported type for array operation: " + type->toString());
 }

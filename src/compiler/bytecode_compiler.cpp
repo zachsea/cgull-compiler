@@ -84,6 +84,14 @@ std::string BytecodeCompiler::typeToJVMType(const std::shared_ptr<Type>& type) {
       throw std::runtime_error("Unsupported right now");
     }
   }
+  auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
+  if (pointerType) {
+    return pointerType->toString();
+  }
+  auto arrayType = std::dynamic_pointer_cast<ArrayType>(type);
+  if (arrayType) {
+    return "[" + typeToJVMType(arrayType->getElementType());
+  }
   return type->toString();
 }
 
@@ -195,8 +203,11 @@ void BytecodeCompiler::generateCallInstruction(std::basic_ostream<char>& out,
     out << "invokestatic Main." << instruction->function->getMangledName() << "(";
   }
 
-  for (const auto& parameter : instruction->function->parameters) {
-    out << typeToJVMType(parameter->dataType);
+  for (int i = 0; i < instruction->function->parameters.size(); i++) {
+    if (i > 0) {
+      out << ", ";
+    }
+    out << typeToJVMType(instruction->function->parameters[i]->dataType);
   }
   out << ")";
   // return type

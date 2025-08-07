@@ -140,15 +140,15 @@ std::shared_ptr<Type> TypeCheckingListener::resolveType(cgullParser::TypeContext
     return nullptr;
   }
 
-  if (typeCtx->array_suffix().size() > 0) {
-    for (auto suffix : typeCtx->array_suffix()) {
-      baseType = std::make_shared<ArrayType>(baseType);
-    }
-  }
-
   for (auto child : typeCtx->children) {
     if (child->getText() == "*") {
       baseType = std::make_shared<PointerType>(baseType);
+    }
+  }
+
+  if (typeCtx->array_suffix().size() > 0) {
+    for (auto suffix : typeCtx->array_suffix()) {
+      baseType = std::make_shared<ArrayType>(baseType);
     }
   }
 
@@ -885,6 +885,26 @@ void TypeCheckingListener::exitDereference_expression(cgullParser::Dereference_e
   setExpressionType(ctx, pointerType->getPointedType());
 }
 
+void TypeCheckingListener::exitDereferenceable(cgullParser::DereferenceableContext* ctx) {
+  if (ctx->IDENTIFIER()) {
+    auto varSymbol = currentScope->resolve(ctx->IDENTIFIER()->getSymbol()->getText());
+    if (auto variableSymbol = std::dynamic_pointer_cast<VariableSymbol>(varSymbol)) {
+      setExpressionType(ctx, variableSymbol->dataType);
+    } else {
+      errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, ctx->getStart()->getLine(),
+                                ctx->getStart()->getCharPositionInLine(), "Cannot resolve type for dereferenceable");
+    }
+  } else if (ctx->function_call()) {
+    setExpressionType(ctx, getExpressionType(ctx->function_call()));
+  } else if (ctx->allocate_expression()) {
+    setExpressionType(ctx, getExpressionType(ctx->allocate_expression()));
+  } else if (ctx->field_access()) {
+    setExpressionType(ctx, getExpressionType(ctx->field_access()));
+  } else if (ctx->index_expression()) {
+    setExpressionType(ctx, getExpressionType(ctx->index_expression()));
+  }
+}
+
 void TypeCheckingListener::exitTuple_expression(cgullParser::Tuple_expressionContext* ctx) {
   if (!ctx->expression_list()) {
     setExpressionType(ctx, std::make_shared<TupleType>(std::vector<std::shared_ptr<Type>>{}));
@@ -1210,6 +1230,12 @@ void TypeCheckingListener::exitAllocate_array(cgullParser::Allocate_arrayContext
                               ctx->getStart()->getCharPositionInLine(), "Invalid type in array allocation");
     setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
     return;
+  }
+
+  for (auto child : ctx->type()->children) {
+    if (child->getText() == "*") {
+      baseType = std::make_shared<PointerType>(baseType);
+    }
   }
 
   // add array dimensions based on the number of expressions

@@ -62,6 +62,7 @@ public:
   std::shared_ptr<Type> getElementType() const;
   std::string toString() const override;
   bool equals(const std::shared_ptr<Type>& other) const override;
+  int getDimensions() const;
 
 private:
   std::shared_ptr<Type> elementType;

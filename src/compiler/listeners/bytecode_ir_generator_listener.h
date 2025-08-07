@@ -69,6 +69,7 @@ private:
   void generateStringConversion(antlr4::ParserRuleContext* ctx);
   std::string getLoadInstruction(const std::shared_ptr<PrimitiveType>& primitiveType);
   std::string getStoreInstruction(const std::shared_ptr<PrimitiveType>& primitiveType);
+  std::string getArrayOperationInstruction(const std::shared_ptr<Type>& type, bool isStore);
   void handleLogicalExpression(cgullParser::Base_expressionContext* ctx);
   void convertPrimitiveToPrimitive(const std::shared_ptr<PrimitiveType>& fromType,
                                    const std::shared_ptr<PrimitiveType>& toType);
@@ -130,6 +131,10 @@ private:
   virtual void exitDereferenceable(cgullParser::DereferenceableContext* ctx) override;
 
   virtual void enterDereference_expression(cgullParser::Dereference_expressionContext* ctx) override;
+
+  virtual void exitAllocate_array(cgullParser::Allocate_arrayContext* ctx) override;
+  virtual void enterArray_expression(cgullParser::Array_expressionContext* ctx) override;
+  virtual void enterIndexable(cgullParser::IndexableContext* ctx) override;
 };
 
 #endif // BYTECODE_IR_GENERATOR_LISTENER_H

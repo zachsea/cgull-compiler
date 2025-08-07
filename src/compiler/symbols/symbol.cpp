@@ -28,6 +28,9 @@ std::string FunctionSymbol::getMangledName() const {
     }
     mangledName += "_";
   }
+  // replace all [] with __, JVM doesn't like [] in method names
+  std::replace(mangledName.begin(), mangledName.end(), '[', '_');
+  std::replace(mangledName.begin(), mangledName.end(), ']', '_');
 
   return mangledName;
 }
