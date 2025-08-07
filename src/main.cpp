@@ -132,8 +132,21 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
-  BytecodeCompiler compiler(tree, semanticAnalyzer.getScopes(), semanticAnalyzer.getExpressionTypes());
+  semanticAnalyzer.getErrorReporter().displayErrors();
+
+  // dont continue if there are any errors
+  if (semanticAnalyzer.getErrorReporter().hasErrors()) {
+    std::cerr << "Semantic analysis failed with errors. Bytecode generation will not be performed." << std::endl;
+    return 1;
+  }
+
+  BytecodeCompiler compiler(tree, semanticAnalyzer.getScopes(), semanticAnalyzer.getExpressionTypes(),
+                            semanticAnalyzer.getExpectingStringConversion());
   compiler.compile();
+
+  for (const auto& ctx : semanticAnalyzer.getExpectingStringConversion()) {
+    std::cout << "Expecting string conversion at: " << ctx->toString() << std::endl;
+  }
 
   if (compiler.getErrorReporter().hasErrors()) {
     std::cerr << "Bytecode generation failed with errors." << std::endl;

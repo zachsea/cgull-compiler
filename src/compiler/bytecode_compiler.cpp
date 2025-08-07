@@ -5,26 +5,19 @@
 BytecodeCompiler::BytecodeCompiler(
     cgullParser::ProgramContext* programCtx,
     std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>> scopeMap,
-    std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes)
-    : programCtx(programCtx), scopeMap(scopeMap), expressionTypes(expressionTypes) {}
+    std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes,
+    std::unordered_set<antlr4::ParserRuleContext*> expectingStringConversion)
+    : programCtx(programCtx), scopeMap(scopeMap), expressionTypes(expressionTypes),
+      expectingStringConversion(expectingStringConversion) {}
 
 void BytecodeCompiler::compile() {
   // create a listener to generate the IR
-  BytecodeIRGeneratorListener listener(errorReporter, scopeMap, expressionTypes);
+  BytecodeIRGeneratorListener listener(errorReporter, scopeMap, expressionTypes, expectingStringConversion);
   antlr4::tree::ParseTreeWalker walker;
   walker.walk(&listener, programCtx);
 
   // get the generated classes
   auto classes = listener.getClasses();
-  for (const auto& irClass : classes) {
-    std::cout << "Class: " << irClass->name << "\n";
-    for (const auto& method : irClass->methods) {
-      std::cout << "  Method: " << method->name << "\n";
-      for (const auto& instruction : method->instructions) {
-        std::cout << "    Instruction: " << instruction->toString() << "\n";
-      }
-    }
-  }
   generatedClasses = classes;
 }
 
@@ -41,14 +34,10 @@ std::string BytecodeCompiler::typeToJVMType(const std::shared_ptr<Type>& type) {
     switch (primitiveType->getPrimitiveKind()) {
     case PrimitiveType::PrimitiveKind::INT:
       return "I";
-    case PrimitiveType::PrimitiveKind::SHORT:
-      return "S";
     case PrimitiveType::PrimitiveKind::LONG:
       return "J";
     case PrimitiveType::PrimitiveKind::FLOAT:
       return "F";
-    case PrimitiveType::PrimitiveKind::CHAR:
-      return "C";
     case PrimitiveType::PrimitiveKind::STRING:
       return "java/lang/String";
     case PrimitiveType::PrimitiveKind::VOID:
@@ -87,7 +76,6 @@ void BytecodeCompiler::generateClass(std::basic_ostream<char>& out, const std::s
     out << "{\n";
 
     for (const auto& instruction : method->instructions) {
-      std::cout << "Generating instruction: " << instruction->toString() << "\n";
       generateInstruction(out, instruction);
     }
     // implicit return for main, if not already specified
@@ -118,7 +106,12 @@ void BytecodeCompiler::generateCallInstruction(std::basic_ostream<char>& out,
                                                const std::shared_ptr<IRCallInstruction>& instruction) {
   if (instruction->function->name == "println") {
     // getstatic already added in enterFunction_call
-    out << "invokevirtual java/io/PrintStream.println(java/lang/String)V\n";
+    auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(instruction->function->parameters[0]->dataType);
+    if (primitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING) {
+      out << "invokevirtual java/io/PrintStream.println(java/lang/String)V\n";
+    } else {
+      // we need to call its toString first, or for primitives we can piggyback still
+    }
     return;
   }
   out << "invokevirtual " << instruction->function->getMangledName() << "(";

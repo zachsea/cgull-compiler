@@ -5,13 +5,13 @@
 
 struct Song {
   string title;
-  unsigned int duration;
+  int duration;
 }
 
 struct Playlist {
   string name;
   Song* songs;
-  unsigned int count;
+  int count;
 
   fn $destruct() -> void {
     deallocate[] songs; // Free allocated memory for songs

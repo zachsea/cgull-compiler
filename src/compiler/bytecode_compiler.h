@@ -14,7 +14,8 @@ class BytecodeCompiler {
 public:
   BytecodeCompiler(cgullParser::ProgramContext* programCtx,
                    std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>> scopeMap,
-                   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes);
+                   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes,
+                   std::unordered_set<antlr4::ParserRuleContext*> expectingStringConversion);
 
   void compile();
   void generateBytecode(std::basic_ostream<char>& out);
@@ -25,6 +26,7 @@ private:
   cgullParser::ProgramContext* programCtx;
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>> scopeMap;
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes;
+  std::unordered_set<antlr4::ParserRuleContext*> expectingStringConversion;
   std::vector<std::shared_ptr<IRClass>> generatedClasses;
 
   void generateClass(std::basic_ostream<char>& out, const std::shared_ptr<IRClass>& irClass);

@@ -32,6 +32,7 @@ public:
   VariableSymbol(const std::string& name, int line, int column, std::shared_ptr<Scope> scope, bool isConst = false);
   std::shared_ptr<Type> dataType;
   bool isConstant;
+  int localIndex = -1;
 };
 
 class TypeSymbol : public Symbol {

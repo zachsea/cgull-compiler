@@ -1,4 +1,11 @@
 fn main() {
-  println("Hello, world!!!!");
-  println("Again");
+  int a = 5;
+  float c = 7.0;
+  bool e = true;
+  string f = "hello";
+
+  println(a);
+  println(c);
+  println(e);
+  println(f);
 }
