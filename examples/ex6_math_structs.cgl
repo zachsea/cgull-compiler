@@ -1,3 +1,10 @@
+/* Example #6 - Structs/Tuples
+ * This example showcases the composite data types in cgull.
+ * It demonstrates structs and access modifiers
+ * Structs offer a way to associate additional scope with function(s).
+ * "Default" constructors initialize public members in order of appearance.
+ */
+
 struct IntPair {
   int x;
   int y;
@@ -28,12 +35,6 @@ struct Point {
   }
 }
 
-// duplicate type definition
-struct Point {
-  int x;
-  int y;
-}
-
 fn returnsPair() -> IntPair {
   return IntPair(1, 2);
 }
@@ -60,3 +61,9 @@ fn main() {
   println("p1 secret: " + p1.getSecret());
   println("p2 secret: " + p2.getSecret());
 }
+
+/* expected output:
+ * p1: Point (1, 2)
+ * p2: Point 2 (3, 4)
+ * test: (1, 2)
+ */

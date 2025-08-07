@@ -1,39 +1,45 @@
 // missing node type definition, resolution error
 
-fn printNodes(Node* head) -> void {
-  if (!head) {
-    return;
-  }
-  println(head->value);
-  printNodes(head->next);
+struct NodePair {
+  Node prev;
+  Node next;
 }
 
-fn getNeighbors(Node* head, string c) -> (Node*, Node*) {
-  Node* prev = nullptr;
-  Node* curr = head;
-  Node* next = nullptr;
+fn printNodes(Node head) -> void {
+  if (head == nullptr) {
+    return;
+  }
+  println(head.value);
+  // recursive call
+  printNodes(head.next);
+}
+
+fn getNeighbors(Node head, string c) -> NodePair {
+  Node prev = nullptr;
+  Node curr = head;
+  Node next = nullptr;
+  // while loop, similar to Golang's for loop
   for (curr != nullptr) {
-    if (curr->value == c) {
-      next = curr->next;
+    if (curr.value == c) {
+      next = curr.next;
       break;
     }
     prev = curr;
-    curr = curr->next;
+    curr = curr.next;
   }
-  return (prev, next);
+  return NodePair(prev, next);
 }
 
-fn main() -> int {
-  Node* head = allocate Node("A", nullptr);
-  head->next = allocate Node("B", nullptr);
-  head->next->next = allocate Node("C", nullptr);
-  head->next->next->next = nullptr;
+fn main() {
+  // dynamic memory allocation
+  Node head = Node("A", nullptr);
+  head.next = Node("B", nullptr);
+  head.next.next = Node("C", nullptr);
+  head.next.next.next = nullptr;
 
   printNodes(head);
-  Node* prev, Node* next = getNeighbors(head, "B");
+  NodePair pair = getNeighbors(head, "B");
 
-  println("Previous of B: " + (if (prev) prev->value else " "));
-  println("Next of B: " + (if (next) next->value else " "));
-
-  return 0;
+  println("Previous of B: " + (if (pair.prev != nullptr) pair.prev.value else " "));
+  println("Next of B: " + (if (pair.next != nullptr) pair.next.value else " "));
 }

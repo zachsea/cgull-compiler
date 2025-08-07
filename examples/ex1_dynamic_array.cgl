@@ -14,7 +14,7 @@ struct IntVector {
   private {
     int size = 0;
     int capacity = 0;
-    int[] data = allocate int[1];
+    int[] data;
 
     fn resize(int new_capacity) {
       int[] new_data = allocate int[new_capacity];
@@ -61,8 +61,7 @@ struct IntVector {
   }
 }
 
-fn main() -> int {
-  // both are stack allocated
+fn main() {
   IntVector vec = IntVector();
   IntVector vec2 = IntVector();
   for (int i = 0; i < 10; i++) {
@@ -72,7 +71,6 @@ fn main() -> int {
   // $toString will be called implicitly since a string is expected
   println(vec);
   println(vec2);
-  // return 0 is implicit
 }
 
 /* expected output:

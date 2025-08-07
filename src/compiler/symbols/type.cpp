@@ -84,45 +84,14 @@ bool ArrayType::equals(const std::shared_ptr<Type>& other) const {
   return elementType->equals(otherArray->elementType);
 }
 
+int ArrayType::getDimensions() const {
+  if (elementType->getKind() == TypeKind::ARRAY) {
+    return 1 + std::dynamic_pointer_cast<ArrayType>(elementType)->getDimensions();
+  }
+  return 1;
+}
+
 std::string ArrayType::toString() const { return elementType->toString() + "[]"; }
-
-TupleType::TupleType(const std::vector<std::shared_ptr<Type>>& elementTypes)
-    : Type(TypeKind::TUPLE), elementTypes(elementTypes) {}
-
-const std::vector<std::shared_ptr<Type>>& TupleType::getElementTypes() const { return elementTypes; }
-
-bool TupleType::equals(const std::shared_ptr<Type>& other) const {
-  if (other == nullptr) {
-    return false;
-  }
-  if (other->getKind() != TypeKind::TUPLE) {
-    return false;
-  }
-
-  auto otherTuple = std::dynamic_pointer_cast<TupleType>(other);
-  if (elementTypes.size() != otherTuple->elementTypes.size()) {
-    return false;
-  }
-
-  for (size_t i = 0; i < elementTypes.size(); ++i) {
-    if (!elementTypes[i]->equals(otherTuple->elementTypes[i])) {
-      return false;
-    }
-  }
-  return true;
-}
-
-std::string TupleType::toString() const {
-  std::stringstream ss;
-  ss << "tuple<";
-  for (size_t i = 0; i < elementTypes.size(); ++i) {
-    if (i > 0)
-      ss << ", ";
-    ss << elementTypes[i]->toString();
-  }
-  ss << ">";
-  return ss.str();
-}
 
 PointerType::PointerType(std::shared_ptr<Type> pointeeType) : Type(TypeKind::POINTER), pointeeType(pointeeType) {}
 
@@ -137,7 +106,26 @@ bool PointerType::equals(const std::shared_ptr<Type>& other) const {
   return pointeeType->equals(otherPointer->pointeeType);
 }
 
-std::string PointerType::toString() const { return pointeeType->toString() + "*"; }
+std::string PointerType::toString() const {
+  auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(pointeeType);
+  if (!primitiveType) {
+    throw std::runtime_error("Unknown primitive kind");
+  }
+  switch (primitiveType->getPrimitiveKind()) {
+  case PrimitiveType::PrimitiveKind::INT:
+    return "IntReference";
+  case PrimitiveType::PrimitiveKind::FLOAT:
+    return "FloatReference";
+  case PrimitiveType::PrimitiveKind::BOOLEAN:
+    return "BoolReference";
+  case PrimitiveType::PrimitiveKind::STRING:
+    return "StringReference";
+  case PrimitiveType::PrimitiveKind::VOID:
+    return "VoidReference";
+  default:
+    throw std::runtime_error("Unknown primitive kind");
+  }
+}
 
 UnresolvedType::UnresolvedType(const std::string& name) : Type(TypeKind::UNRESOLVED), name(name) {}
 

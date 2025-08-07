@@ -17,8 +17,14 @@ public:
   std::shared_ptr<Type> getExpressionType(antlr4::ParserRuleContext* ctx) const;
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> getExpressionTypes() const;
   std::unordered_set<antlr4::ParserRuleContext*> getExpectingStringConversion() const;
+  std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<FunctionSymbol>> getResolvedMethodSymbols() const;
 
   static std::shared_ptr<Type> resolvePrimitiveType(const std::string& typeName);
+
+  std::shared_ptr<Type> getArrayBaseType(const std::shared_ptr<Type>& type);
+  int getArrayDimensions(const std::shared_ptr<Type>& type);
+  bool checkArrayExpressionType(cgullParser::Array_expressionContext* ctx, const std::shared_ptr<Type>& expectedType,
+                                int currentDimension);
 
 private:
   ErrorReporter& errorReporter;
@@ -27,7 +33,7 @@ private:
   const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes;
 
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes;
-
+  std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<FunctionSymbol>> resolvedMethodSymbols;
   std::unordered_set<antlr4::ParserRuleContext*> expectingStringConversion;
 
   // helper methods
@@ -69,13 +75,12 @@ private:
 
   void exitCast_expression(cgullParser::Cast_expressionContext* ctx) override;
   void exitDereference_expression(cgullParser::Dereference_expressionContext* ctx) override;
+  void exitDereferenceable(cgullParser::DereferenceableContext* ctx) override;
 
-  void exitTuple_expression(cgullParser::Tuple_expressionContext* ctx) override;
   void exitArray_expression(cgullParser::Array_expressionContext* ctx) override;
   void exitAllocate_expression(cgullParser::Allocate_expressionContext* ctx) override;
   void exitAllocate_primitive(cgullParser::Allocate_primitiveContext* ctx) override;
   void exitAllocate_array(cgullParser::Allocate_arrayContext* ctx) override;
-  void exitAllocate_struct(cgullParser::Allocate_structContext* ctx) override;
 
   void exitUnary_expression(cgullParser::Unary_expressionContext* ctx) override;
   void exitPostfix_expression(cgullParser::Postfix_expressionContext* ctx) override;
@@ -86,9 +91,7 @@ private:
   void enterFunction_definition(cgullParser::Function_definitionContext* ctx) override;
   void exitFunction_definition(cgullParser::Function_definitionContext* ctx) override;
   void exitReturn_statement(cgullParser::Return_statementContext* ctx) override;
-
-  void exitDestructuring_item(cgullParser::Destructuring_itemContext* ctx) override;
-  void exitDestructuring_statement(cgullParser::Destructuring_statementContext* ctx) override;
+  ;
 
   std::shared_ptr<Type> checkAssignmentCompatibility(std::shared_ptr<Type> leftType, std::shared_ptr<Type> rightType,
                                                      antlr4::ParserRuleContext* ctx);

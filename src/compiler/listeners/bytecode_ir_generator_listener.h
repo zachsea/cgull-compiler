@@ -11,8 +11,10 @@ public:
   BytecodeIRGeneratorListener(
       ErrorReporter& errorReporter, std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes,
       std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>>& expressionTypes,
+      std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<FunctionSymbol>>& resolvedMethodSymbols,
       std::unordered_set<antlr4::ParserRuleContext*>& expectingStringConversion,
-      std::unordered_map<PrimitiveType::PrimitiveKind, std::shared_ptr<IRClass>>& primitiveWrappers);
+      std::unordered_map<PrimitiveType::PrimitiveKind, std::shared_ptr<IRClass>>& primitiveWrappers,
+      std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>>& constructorMap);
 
   const std::vector<std::shared_ptr<IRClass>>& getClasses() const;
 
@@ -41,14 +43,15 @@ private:
   ErrorReporter& errorReporter;
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes;
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes;
+  std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<FunctionSymbol>> resolvedMethodSymbols;
   std::unordered_set<antlr4::ParserRuleContext*> expectingStringConversion;
   std::unordered_map<PrimitiveType::PrimitiveKind, std::shared_ptr<IRClass>>& primitiveWrappers;
   std::vector<std::shared_ptr<IRClass>> classes;
-  // currently not used, no additional classes besides main currently supported
   std::stack<std::shared_ptr<IRClass>> currentClassStack;
   std::shared_ptr<FunctionSymbol> currentFunction;
   int currentLocalIndex = 0;
   bool dereferenceAssignment = false;
+  std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>>& constructorMap;
 
   int labelCounter = 0;
   std::stack<std::string> breakLabels;
@@ -61,6 +64,10 @@ private:
   std::unordered_map<cgullParser::Base_expressionContext*, ExpressionLabels> expressionLabelsMap;
   std::unordered_map<cgullParser::Base_expressionContext*, cgullParser::Base_expressionContext*> parentExpressionMap;
 
+  // store temporary context for field access
+  std::shared_ptr<Type> lastFieldType = nullptr;
+  std::unordered_map<antlr4::ParserRuleContext*, bool> isDereferenceContexts;
+
   std::shared_ptr<Scope> getCurrentScope(antlr4::ParserRuleContext* ctx) const;
   std::string generateLabel();
 
@@ -69,6 +76,8 @@ private:
   void generateStringConversion(antlr4::ParserRuleContext* ctx);
   std::string getLoadInstruction(const std::shared_ptr<PrimitiveType>& primitiveType);
   std::string getStoreInstruction(const std::shared_ptr<PrimitiveType>& primitiveType);
+  std::string getArrayOperationInstruction(const std::shared_ptr<Type>& type, bool isStore);
+  void generateDereference(antlr4::ParserRuleContext* ctx);
   void handleLogicalExpression(cgullParser::Base_expressionContext* ctx);
   void convertPrimitiveToPrimitive(const std::shared_ptr<PrimitiveType>& fromType,
                                    const std::shared_ptr<PrimitiveType>& toType);
@@ -78,6 +87,8 @@ private:
 
   virtual void enterFunction_definition(cgullParser::Function_definitionContext* ctx) override;
   virtual void exitFunction_definition(cgullParser::Function_definitionContext* ctx) override;
+
+  virtual void enterParameter(cgullParser::ParameterContext* ctx) override;
 
   virtual void enterFunction_call(cgullParser::Function_callContext* ctx) override;
   virtual void exitFunction_call(cgullParser::Function_callContext* ctx) override;
@@ -91,6 +102,7 @@ private:
   virtual void enterVariable_declaration(cgullParser::Variable_declarationContext* ctx) override;
   virtual void exitVariable_declaration(cgullParser::Variable_declarationContext* ctx) override;
 
+  virtual void enterVariable(cgullParser::VariableContext* ctx) override;
   virtual void exitVariable(cgullParser::VariableContext* ctx) override;
 
   virtual void exitAssignment_statement(cgullParser::Assignment_statementContext* ctx) override;
@@ -128,6 +140,19 @@ private:
   virtual void exitDereferenceable(cgullParser::DereferenceableContext* ctx) override;
 
   virtual void enterDereference_expression(cgullParser::Dereference_expressionContext* ctx) override;
+
+  virtual void exitAllocate_array(cgullParser::Allocate_arrayContext* ctx) override;
+  virtual void enterArray_expression(cgullParser::Array_expressionContext* ctx) override;
+  virtual void enterIndexable(cgullParser::IndexableContext* ctx) override;
+
+  virtual void enterStruct_definition(cgullParser::Struct_definitionContext* ctx) override;
+  virtual void exitStruct_definition(cgullParser::Struct_definitionContext* ctx) override;
+
+  virtual void enterField_access(cgullParser::Field_accessContext* ctx) override;
+  virtual void exitField_access(cgullParser::Field_accessContext* ctx) override;
+
+  virtual void enterField(cgullParser::FieldContext* ctx) override;
+  virtual void exitField(cgullParser::FieldContext* ctx) override;
 };
 
 #endif // BYTECODE_IR_GENERATOR_LISTENER_H

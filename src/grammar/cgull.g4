@@ -17,7 +17,6 @@ base_expression
     | function_call
     | cast_expression
     | unary_expression
-    | tuple_expression
     | array_expression
     | variable
     | base_expression (MULT_OP | DIV_OP | MOD_OP) base_expression
@@ -43,14 +42,12 @@ variable
     ;
 
 index_expression
-    : indexable '[' expression ']'
+    : indexable ('[' expression ']')+
     ;
 
 indexable
     : IDENTIFIER
     | '(' expression ')'
-    | indexable '[' expression ']'
-    | indexable '(' expression_list? ')'
     ;
 
 dereference_expression
@@ -81,7 +78,7 @@ function_call
     ;
 
 allocate_expression
-    : ALLOCATE (allocate_primitive | allocate_array | allocate_struct)
+    : ALLOCATE (allocate_primitive | allocate_array)
     ;
 
 allocate_primitive
@@ -89,11 +86,7 @@ allocate_primitive
     ;
 
 allocate_array
-    : type ('[' expression ']' | array_expression)
-    ;
-
-allocate_struct
-    : IDENTIFIER '(' expression_list? ')'
+    : type (('[' expression ']')+ | array_expression)
     ;
 
 parameter
@@ -132,10 +125,6 @@ postfix_expression
     : (IDENTIFIER | function_call | field_access | '(' expression ')') (INCREMENT_OP | DECREMENT_OP)
     ;
 
-tuple_expression
-    : '(' expression_list ')'
-    ;
-
 array_expression
     : '{' expression_list '}'
     ;
@@ -151,7 +140,6 @@ top_level_statement
     | function_definition
     | assignment_statement
     | variable_declaration_statement
-    | destructuring_statement
     ;
 
 struct_definition
@@ -175,7 +163,7 @@ access_block
     ;
 
 function_definition
-    : FN (IDENTIFIER | FN_SPECIAL IDENTIFIER) '(' parameter_list? ')' ( '->' '(' type_list ')' | '->' type )? function_block
+    : FN (IDENTIFIER | FN_SPECIAL IDENTIFIER) '(' parameter_list? ')' ( '->' type )? function_block
     ;
 
 assignment_statement
@@ -194,19 +182,6 @@ variable_declaration_list
     : variable_declaration (',' variable_declaration)+
     ;
 
-destructuring_statement
-    : destructuring_list ASSIGN expression SEMICOLON
-    ;
-
-destructuring_list
-    : destructuring_item (',' destructuring_item)*
-    ;
-
-destructuring_item
-    : CONST? type IDENTIFIER
-    | variable
-    ;
-
 function_level_statement
     : loop_statement
     | assignment_statement
@@ -216,7 +191,6 @@ function_level_statement
     | if_statement
     | unary_statement
     | break_statement
-    | destructuring_statement
     ;
 
 function_block
@@ -272,15 +246,11 @@ break_statement
 /* ----- types ----- */
 
 type
-    : (primitive_type | user_defined_type | tuple_type) array_suffix? '*'*
+    : (primitive_type | user_defined_type) '*'? array_suffix*
     ;
 
 array_suffix
     : ARRAY_OP
-    ;
-
-type_list
-    : type (',' type)*
     ;
 
 primitive_type
@@ -289,10 +259,6 @@ primitive_type
 
 user_defined_type
     : IDENTIFIER
-    ;
-
-tuple_type
-    : TUPLE '<' type_list '>'
     ;
 
 /* ----- lexer ----- */
@@ -349,7 +315,6 @@ BOOLEAN_TYPE: 'bool' ;
 VOID_TYPE: 'void' ;
 
 STRUCT: 'struct' ;
-TUPLE: 'tuple' ;
 CONST: 'const' ;
 PUBLIC: 'public' ;
 PRIVATE: 'private' ;

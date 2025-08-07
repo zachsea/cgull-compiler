@@ -4,6 +4,10 @@ DefaultConstructorListener::DefaultConstructorListener(
     ErrorReporter& errorReporter, const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes)
     : errorReporter(errorReporter), scopes(scopes) {}
 
+std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>> DefaultConstructorListener::getConstructorMap() {
+  return constructorMap;
+}
+
 void DefaultConstructorListener::enterStruct_definition(cgullParser::Struct_definitionContext* ctx) {
   auto structScope = scopes.at(ctx);
   auto structSymbol = std::dynamic_pointer_cast<TypeSymbol>(structScope->resolve(ctx->IDENTIFIER()->getText()));
@@ -35,6 +39,9 @@ void DefaultConstructorListener::enterStruct_definition(cgullParser::Struct_defi
     auto paramSymbol =
         std::make_shared<VariableSymbol>(field->name, field->definedAtLine, field->definedAtColumn, structScope);
     paramSymbol->dataType = field->dataType;
+    if (field->isDefined) {
+      paramSymbol->hasDefaultValue = true;
+    }
     constructorSymbol->parameters.push_back(paramSymbol);
   }
   constructorSymbol->returnTypes.push_back(structSymbol->typeRepresentation);
@@ -42,7 +49,7 @@ void DefaultConstructorListener::enterStruct_definition(cgullParser::Struct_defi
   constructorSymbol->isPrivate = false;
   constructorSymbol->definedAtLine = ctx->getStart()->getLine();
   constructorSymbol->definedAtColumn = ctx->getStart()->getCharPositionInLine();
-
+  constructorMap[structSymbol->name] = constructorSymbol;
   if (!structScope->parent->add(constructorSymbol)) {
     // user defined a function at the program level with the same name, not allowed
     auto conflictSymbol = structScope->parent->resolve(constructorSymbol->name);

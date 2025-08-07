@@ -1,5 +1,16 @@
 # Changelog
 
+## [HW5]
+
+### Added
+
+- Support for all the requirements for HW5 (user defined types (structs), functions/function calls, etc.)
+
+### Removed
+
+- Tuples
+- Destructuring, multiple return values
+
 ## [HW4]
 
 ### Added

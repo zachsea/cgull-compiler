@@ -11,7 +11,7 @@ Below is a full list of the files available in the `examples` directory. These w
 3. [Functions](examples/ex3_functions.cgl)
 4. [Branching](examples/ex4_branching.cgl)
 5. [Looping](examples/ex5_looping.cgl)
-6. [Structs and Tuples](examples/ex6_structs_tuples.cgl)
+6. ~~[Structs and Tuples]~~
 7. [Built-in Functions](examples/ex7_builtin.cgl)
 8. [Types and Casting](examples/ex8_types_and_casting.cgl)
 9. ~~[Exceptions]~~
@@ -47,23 +47,9 @@ fn countup(int n) -> void {
   println(n);
 }
 
-fn addSub(int a, int b) -> (int, int) {
-  return (a + b, a - b);
-}
-
 fn useless() -> int {
   return 0;
 }
-
-// using multiple return values
-
-int a, int b = addSub(5, 3);
-println(a); // prints 8
-println(b); // prints 2
-
-// alternatively, store in a tuple
-tuple<int, int> t = addSub(5, 3);
-
 ```
 
 ### Branching
@@ -118,17 +104,9 @@ for {
 
 ### Composite/User-Defined Types
 
-See [examples/ex6_structs_tuples.cgl](examples/ex6_structs_tuples.cgl) for composite types in action.
+~~See [examples/ex6_structs_tuples.cgl] for composite types in action.~~
 
-cgull supports composite types like structs and tuples.
-
-```cgull
-tuple<int, int> t = (1, 2);
-
-// can be destructured
-int a, int b = t;
-a, b = t;
-```
+cgull supports composite types like structs.
 
 ```cgull
 struct Foo {
@@ -199,14 +177,6 @@ arr[0] = 1;
 println(arr[0]); // prints 1
 ```
 
-Tuples are accessed via the square brackets operator, similar to arrays.
-
-```cgull
-tuple<int, int> t = (1, 2);
-println(t[0]); // prints 1
-println(t[1]); // prints 2
-```
-
 ### Commenting
 
 ```cgull
@@ -269,10 +239,6 @@ arr[1] = 2;
 println(arr[0]); // prints 1
 println(arr[1]); // prints 2
 ```
-
-##### Tuples
-
-See [Composite/User-Defined Types](#compositeuser-defined-types) for tuples.
 
 ### Literals
 

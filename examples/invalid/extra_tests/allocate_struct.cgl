@@ -1,9 +1,9 @@
 struct Node {
   string value;
-  Node* next;
+  Node next;
 }
 
 fn main() -> int {
-  Node* n = allocate Node("a", "hi");
-  Node* t = allocate Node("a", nullptr, "hi");
+  Node n = Node("a", "hi");
+  Node t = Node("a", nullptr, "hi");
 }

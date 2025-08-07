@@ -22,7 +22,6 @@ private:
   void enterFunction_call(cgullParser::Function_callContext* ctx) override;
   void enterStruct_definition(cgullParser::Struct_definitionContext* ctx) override;
   void enterFunction_definition(cgullParser::Function_definitionContext* ctx) override;
-  void enterDestructuring_item(cgullParser::Destructuring_itemContext* ctx) override;
   void enterCast_expression(cgullParser::Cast_expressionContext* ctx) override;
   void exitAssignment_statement(cgullParser::Assignment_statementContext* ctx) override;
 

@@ -23,6 +23,7 @@ void SemanticAnalyzer::analyze(cgullParser::ProgramContext* programCtx) {
   // SECOND PASS: create default constructors for structs
   DefaultConstructorListener defaultConstructorListener(errorReporter, scopeMap);
   walker.walk(&defaultConstructorListener, programCtx);
+  constructorMap = defaultConstructorListener.getConstructorMap();
 
   // THIRD PASS: ensure special methods are valid
   SpecialMethodsListener specialMethodsListener(errorReporter, scopeMap);
@@ -33,6 +34,7 @@ void SemanticAnalyzer::analyze(cgullParser::ProgramContext* programCtx) {
   walker.walk(&typeChecker, programCtx);
   expressionTypes = typeChecker.getExpressionTypes();
   expectingStringConversion = typeChecker.getExpectingStringConversion();
+  resolvedMethodSymbols = typeChecker.getResolvedMethodSymbols();
 
   // FIFTH PASS: check for use before definition errors
   UseBeforeDefinitionListener useBeforeDefListener(errorReporter, scopeMap);
@@ -258,4 +260,13 @@ const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>>& Sem
 
 const std::unordered_set<antlr4::ParserRuleContext*>& SemanticAnalyzer::getExpectingStringConversion() const {
   return expectingStringConversion;
+}
+
+const std::unordered_map<std::string, std::shared_ptr<FunctionSymbol>>& SemanticAnalyzer::getConstructorMap() {
+  return constructorMap;
+}
+
+const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<FunctionSymbol>>&
+SemanticAnalyzer::getResolvedMethodSymbols() const {
+  return resolvedMethodSymbols;
 }

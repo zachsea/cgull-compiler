@@ -57,31 +57,21 @@ void SymbolCollectionListener::enterVariable_declaration(cgullParser::Variable_d
   createAndRegisterVariableSymbol(identifier, ctx->type(), isConst, line, column);
 }
 void SymbolCollectionListener::exitVariable_declaration(cgullParser::Variable_declarationContext* ctx) {
-  // mark as defined if assigned an expression
-  if (ctx->expression()) {
-    auto varSymbol = currentScope->resolve(ctx->IDENTIFIER()->getText());
+  // mark as defined if assigned an expression, or if its a struct definition as these must be defined
+  auto [inStruct, structType] = isStructScope(currentScope);
+  auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(currentScope->resolve(ctx->IDENTIFIER()->getText()));
+  varSymbol->isStructMember = inStruct;
+  varSymbol->parentStructType = structType;
+  if (ctx->expression() || inStruct) {
     if (varSymbol) {
       varSymbol->isDefined = true;
       varSymbol->definedAtLine = ctx->IDENTIFIER()->getSymbol()->getLine();
       varSymbol->definedAtColumn = ctx->IDENTIFIER()->getSymbol()->getCharPositionInLine();
+
+      if (inStruct && ctx->expression()) {
+        varSymbol->hasDefaultValue = true;
+      }
     }
-  }
-}
-
-void SymbolCollectionListener::enterDestructuring_item(cgullParser::Destructuring_itemContext* ctx) {
-  std::string identifier = ctx->IDENTIFIER()->getSymbol()->getText();
-  bool isConst = ctx->CONST() != nullptr;
-  int line = ctx->IDENTIFIER()->getSymbol()->getLine();
-  int column = ctx->IDENTIFIER()->getSymbol()->getCharPositionInLine();
-
-  createAndRegisterVariableSymbol(identifier, ctx->type(), isConst, line, column);
-}
-void SymbolCollectionListener::exitDestructuring_item(cgullParser::Destructuring_itemContext* ctx) {
-  // mark as defined if assigned an expression
-  auto varSymbol = currentScope->resolve(ctx->IDENTIFIER()->getText());
-  if (varSymbol) {
-    varSymbol->definedAtLine = ctx->IDENTIFIER()->getSymbol()->getLine();
-    varSymbol->definedAtColumn = ctx->IDENTIFIER()->getSymbol()->getCharPositionInLine();
   }
 }
 
@@ -176,35 +166,18 @@ void SymbolCollectionListener::enterFunction_definition(cgullParser::Function_de
 
   // add "this" as a local variable if it's a struct method, not as a parameter
   if (isStructMethod && structSymbol) {
-    // create a pointer type to the struct
-    auto structType = structSymbol->typeRepresentation;
-    auto structPointerType = std::make_shared<PointerType>(structType);
-
     // create the "this" variable (but not as a parameter)
     auto thisVar = std::make_shared<VariableSymbol>("this", line, column, currentScope);
-    thisVar->dataType = structPointerType;
+    thisVar->dataType = structSymbol->typeRepresentation;
     thisVar->definedAtLine = line;
     thisVar->definedAtColumn = column;
+    thisVar->localIndex = 0;
 
     currentScope->add(thisVar);
     functionSymbol->isStructMethod = true; // Mark this as a struct method
   }
 
-  if (ctx->type_list()) {
-    // one type that's a tuple of types, in fuuture maybe allow multiple return types
-    std::vector<std::shared_ptr<Type>> returnTypes;
-    for (auto typeCtx : ctx->type_list()->type()) {
-      auto resolvedType = resolveType(typeCtx);
-      if (resolvedType) {
-        returnTypes.push_back(resolvedType);
-      } else {
-        errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, line, column,
-                                  "unresolved type " + typeCtx->getText());
-        returnTypes.push_back(std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
-      }
-    }
-    functionSymbol->returnTypes.push_back(std::make_shared<TupleType>(returnTypes));
-  } else if (ctx->type()) {
+  if (ctx->type()) {
     auto resolvedType = resolveType(ctx->type());
     if (resolvedType) {
       functionSymbol->returnTypes.push_back(resolvedType);
@@ -324,20 +297,6 @@ void SymbolCollectionListener::enterFunction_call(cgullParser::Function_callCont
   }
 }
 
-void SymbolCollectionListener::enterAllocate_struct(cgullParser::Allocate_structContext* ctx) {
-  // check that any identifiers inside the allocate struct are defined
-  for (auto child : ctx->children) {
-    if (auto varCtx = dynamic_cast<cgullParser::VariableContext*>(child)) {
-      std::string identifier = varCtx->IDENTIFIER()->getSymbol()->getText();
-      auto varSymbol = currentScope->resolve(identifier);
-      if (!varSymbol) {
-        errorReporter.reportError(ErrorType::UNRESOLVED_REFERENCE, varCtx->getStart()->getLine(),
-                                  varCtx->getStart()->getCharPositionInLine(), "unresolved variable " + identifier);
-      }
-    }
-  }
-}
-
 void SymbolCollectionListener::enterCast_expression(cgullParser::Cast_expressionContext* ctx) {
   // check that any identifiers inside the cast expression are defined
   for (auto child : ctx->children) {
@@ -391,27 +350,10 @@ std::shared_ptr<Type> SymbolCollectionListener::resolveType(cgullParser::TypeCon
     if (auto typeSymbol = std::dynamic_pointer_cast<TypeSymbol>(resolvedTypeSymbol)) {
       baseType = typeSymbol->typeRepresentation;
     }
-  } else if (typeCtx->tuple_type()) {
-    std::vector<std::shared_ptr<Type>> elementTypes;
-    if (typeCtx->tuple_type()->type_list()) {
-      for (auto typectx : typeCtx->tuple_type()->type_list()->type()) {
-        auto resolvedType = resolveType(typectx);
-        if (resolvedType) {
-          elementTypes.push_back(resolvedType);
-        } else {
-          return nullptr;
-        }
-      }
-    }
-    baseType = std::make_shared<TupleType>(elementTypes);
   }
 
   if (!baseType) {
     return nullptr;
-  }
-
-  if (typeCtx->array_suffix()) {
-    baseType = std::make_shared<ArrayType>(baseType);
   }
 
   // handle pointers
@@ -421,6 +363,11 @@ std::shared_ptr<Type> SymbolCollectionListener::resolveType(cgullParser::TypeCon
     }
   }
 
+  if (typeCtx->array_suffix().size() > 0) {
+    for (auto suffix : typeCtx->array_suffix()) {
+      baseType = std::make_shared<ArrayType>(baseType);
+    }
+  }
   return baseType;
 }
 

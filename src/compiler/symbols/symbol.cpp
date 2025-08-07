@@ -4,11 +4,8 @@ Symbol::Symbol(const std::string& name, SymbolType type, int line, int column, s
     : name(name), type(type), definedAtLine(line), definedAtColumn(column), isDefined(false), scope(scope) {}
 
 VariableSymbol::VariableSymbol(const std::string& name, int line, int column, std::shared_ptr<Scope> scope,
-                               bool isConst)
-    : Symbol(name, SymbolType::VARIABLE, line, column, scope), isConstant(isConst) {}
-
-ArraySymbol::ArraySymbol(const std::string& name, int line, int column, std::shared_ptr<Scope> scope)
-    : Symbol(name, SymbolType::ARRAY, line, column, scope) {}
+                               bool isConst, bool isStructMember)
+    : Symbol(name, SymbolType::VARIABLE, line, column, scope), isConstant(isConst), isStructMember(isStructMember) {}
 
 TypeSymbol::TypeSymbol(const std::string& name, int line, int column, std::shared_ptr<Scope> scope)
     : Symbol(name, SymbolType::TYPE, line, column, scope) {}
@@ -28,6 +25,9 @@ std::string FunctionSymbol::getMangledName() const {
     }
     mangledName += "_";
   }
+  // replace all [] with __, JVM doesn't like [] in method names
+  std::replace(mangledName.begin(), mangledName.end(), '[', '_');
+  std::replace(mangledName.begin(), mangledName.end(), ']', '_');
 
   return mangledName;
 }
