@@ -35,6 +35,7 @@ public:
   std::shared_ptr<TypeSymbol> parentStructType;
   bool isConstant;
   bool isStructMember;
+  bool hasDefaultValue = false;
   int localIndex = -1;
 };
 

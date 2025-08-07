@@ -381,7 +381,9 @@ void TypeCheckingListener::exitFunction_call(cgullParser::Function_callContext* 
     return;
   }
 
-  std::string functionName = ctx->IDENTIFIER()->getSymbol()->getText();
+  std::string identifierName = ctx->IDENTIFIER()->getSymbol()->getText();
+  std::string specialToken = ctx->FN_SPECIAL() ? ctx->FN_SPECIAL()->getText() : "";
+  std::string functionName = specialToken + identifierName;
   auto argumentTypes = collectArgumentTypes(ctx->expression_list());
 
   // method call in a field access context

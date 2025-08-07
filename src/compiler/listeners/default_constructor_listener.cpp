@@ -39,6 +39,9 @@ void DefaultConstructorListener::enterStruct_definition(cgullParser::Struct_defi
     auto paramSymbol =
         std::make_shared<VariableSymbol>(field->name, field->definedAtLine, field->definedAtColumn, structScope);
     paramSymbol->dataType = field->dataType;
+    if (field->isDefined) {
+      paramSymbol->hasDefaultValue = true;
+    }
     constructorSymbol->parameters.push_back(paramSymbol);
   }
   constructorSymbol->returnTypes.push_back(structSymbol->typeRepresentation);

@@ -67,6 +67,10 @@ void SymbolCollectionListener::exitVariable_declaration(cgullParser::Variable_de
       varSymbol->isDefined = true;
       varSymbol->definedAtLine = ctx->IDENTIFIER()->getSymbol()->getLine();
       varSymbol->definedAtColumn = ctx->IDENTIFIER()->getSymbol()->getCharPositionInLine();
+
+      if (inStruct && ctx->expression()) {
+        varSymbol->hasDefaultValue = true;
+      }
     }
   }
 }
