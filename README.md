@@ -20,6 +20,7 @@ I've attempted to make sure there's a high chance the cmake file will also find 
 It should describe everything you need to know, but the TL;DR if you are struggling to use the run.sh script for system environment reasons:
 
 - Even though this is a C++ project the compiler targets the JVM.
+- The antlr4-cpp-runtime for 4.13.2 is required
 - Have Java installed (I used 23.0.2), there are no need to fetch dependencies these are located in the `thirdparty` directory.
 - Use cmake to build the compiler
 - Compile using the produced executable with an example file as an argument
