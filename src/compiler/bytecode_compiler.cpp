@@ -111,6 +111,14 @@ void BytecodeCompiler::generateCallInstruction(std::basic_ostream<char>& out,
       // we need to call its toString first, or for primitives we can piggyback still
     }
     return;
+  } else if (instruction->function->name == "readline") {
+    // this doesnt take any arguments, so we can just put all the related instructions here
+    out << "new java/util/Scanner\n";
+    out << "dup\n";
+    out << "getstatic java/lang/System.in java/io/InputStream\n";
+    out << "invokespecial java/util/Scanner.<init>(java/io/InputStream)V\n";
+    out << "invokevirtual java/util/Scanner.nextLine()java/lang/String\n";
+    return;
   }
   out << "invokevirtual " << instruction->function->getMangledName() << "(";
   for (const auto& parameter : instruction->function->parameters) {

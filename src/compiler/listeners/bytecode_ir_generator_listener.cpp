@@ -396,6 +396,33 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
       std::string trueLabel = generateLabel();
       std::string endLabel = generateLabel();
 
+      // handle strings
+      auto leftExpr = ctx->base_expression(0);
+      auto rightExpr = ctx->base_expression(1);
+      auto leftType = expressionTypes[leftExpr];
+      auto rightType = expressionTypes[rightExpr];
+      auto leftPrimitiveType = std::dynamic_pointer_cast<PrimitiveType>(leftType);
+      auto rightPrimitiveType = std::dynamic_pointer_cast<PrimitiveType>(rightType);
+
+      if (leftPrimitiveType && rightPrimitiveType &&
+          (leftPrimitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING ||
+           rightPrimitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING)) {
+        if (!ctx->EQUAL_OP() && !ctx->NOT_EQUAL_OP()) {
+          throw std::runtime_error("Unsupported string comparison operation: " + ctx->getText());
+        }
+        // call .equals on the two values
+        auto rawInstruction =
+            std::make_shared<IRRawInstruction>("invokevirtual java/lang/String.equals(java/lang/Object)Z");
+        currentFunction->instructions.push_back(rawInstruction);
+        if (ctx->NOT_EQUAL_OP()) {
+          auto rawInstructionPushTrue = std::make_shared<IRRawInstruction>("iconst 1");
+          currentFunction->instructions.push_back(rawInstructionPushTrue);
+          auto rawInstructionXor = std::make_shared<IRRawInstruction>("ixor");
+          currentFunction->instructions.push_back(rawInstructionXor);
+        }
+        return;
+      }
+
       if (ctx->EQUAL_OP()) {
         // generate code for ==
         auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmpeq " + trueLabel);

@@ -1,27 +1,12 @@
 fn main() {
-  println("Normal for loop");
-  for (int i = 0; i < 10; i++) {
-    println(i);
+  println("Enter something: ");
+  string a = readline();
+  println("Enter something else: ");
+  string b = readline();
+  println(a + " " + b);
+  if (a == b) {
+    println("They are the same");
+  } else {
+    println("They are different");
   }
-  int i = 0;
-  println("Infinite for loop w/ break");
-  for {
-    if (i++ == 5) {
-      break;
-    }
-    println(i);
-  }
-
-  println("While loop");
-  i = 0;
-  for (i < 3) {
-    println(i);
-    i++;
-  }
-
-  println("Until loop");
-  i = 0;
-  for {
-    println(".");
-  } until (i++ == 3);
 }
