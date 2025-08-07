@@ -14,11 +14,14 @@ public:
   ErrorReporter& getErrorReporter() { return errorReporter; }
 
   void printSymbolsAsJson(std::ostream& out = std::cout) const;
+  const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& getScopes();
+  const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>>& getExpressionTypes();
 
 private:
   ErrorReporter errorReporter;
   std::shared_ptr<Scope> globalScope;
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>> scopeMap;
+  std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes;
 
   void addBuiltinFunctions();
 

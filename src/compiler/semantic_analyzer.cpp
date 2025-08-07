@@ -259,3 +259,11 @@ std::string SemanticAnalyzer::getScopeName(std::shared_ptr<Scope> scope) const {
 
   return "Block at Line " + std::to_string(ctx->getStart()->getLine());
 }
+
+const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& SemanticAnalyzer::getScopes() {
+  return scopeMap;
+}
+
+const std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>>& SemanticAnalyzer::getExpressionTypes() {
+  return expressionTypes;
+}
