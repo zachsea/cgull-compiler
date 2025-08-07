@@ -787,25 +787,28 @@ void BytecodeIRGeneratorListener::exitUnary_expression(cgullParser::Unary_expres
       } else {
         throw std::runtime_error("Unsupported unary expression type: " + expressionType->toString());
       }
-    } else if (ctx->INCREMENT_OP()) {
-      if (typeKind == PrimitiveType::PrimitiveKind::INT) {
-        auto rawInstructionIncrement = std::make_shared<IRRawInstruction>("iinc");
-        currentFunction->instructions.push_back(rawInstructionIncrement);
-      } else {
-        throw std::runtime_error("Unsupported unary expression type: " + expressionType->toString());
-      }
-    } else if (ctx->DECREMENT_OP()) {
-      // there are no decrement instructions, so just subtract 1 normally
-      if (typeKind == PrimitiveType::PrimitiveKind::INT) {
-        auto rawInstructionSubtract = std::make_shared<IRRawInstruction>("iconst 1");
-        currentFunction->instructions.push_back(rawInstructionSubtract);
-        auto rawInstructionSubtract2 = std::make_shared<IRRawInstruction>("isub");
-        currentFunction->instructions.push_back(rawInstructionSubtract2);
-      } else if (typeKind == PrimitiveType::PrimitiveKind::FLOAT) {
-        auto rawInstructionSubtract = std::make_shared<IRRawInstruction>("fconst 1");
-        currentFunction->instructions.push_back(rawInstructionSubtract);
-        auto rawInstructionSubtract2 = std::make_shared<IRRawInstruction>("fsub");
-        currentFunction->instructions.push_back(rawInstructionSubtract2);
+    } else if (ctx->INCREMENT_OP() || ctx->DECREMENT_OP()) {
+      if (typeKind == PrimitiveType::PrimitiveKind::INT || typeKind == PrimitiveType::PrimitiveKind::FLOAT) {
+        std::string prefix = typeKind == PrimitiveType::PrimitiveKind::INT ? "i" : "f";
+        auto rawInstructionPushOne = std::make_shared<IRRawInstruction>(prefix + "const 1");
+        currentFunction->instructions.push_back(rawInstructionPushOne);
+        if (ctx->INCREMENT_OP()) {
+          auto rawInstructionAdd = std::make_shared<IRRawInstruction>(prefix + "add");
+          currentFunction->instructions.push_back(rawInstructionAdd);
+        } else if (ctx->DECREMENT_OP()) {
+          auto rawInstructionSubtract = std::make_shared<IRRawInstruction>(prefix + "sub");
+          currentFunction->instructions.push_back(rawInstructionSubtract);
+        }
+        // store the result back in the variable (duplicate the value on the stack)
+        auto rawInstructionDup = std::make_shared<IRRawInstruction>("dup");
+        currentFunction->instructions.push_back(rawInstructionDup);
+        auto scope = getCurrentScope(ctx);
+        // kinda janky, but type checking should guarantee this is an identifier for now...
+        std::string identifier = ctx->expression()->getText();
+        auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(scope->resolve(identifier));
+        auto rawInstructionStore = std::make_shared<IRRawInstruction>(getStoreInstruction(primitiveType) + " " +
+                                                                      std::to_string(varSymbol->localIndex));
+        currentFunction->instructions.push_back(rawInstructionStore);
       } else {
         throw std::runtime_error("Unsupported unary expression type: " + expressionType->toString());
       }
