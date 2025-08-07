@@ -7,17 +7,17 @@ Not all cases are covered in this document, but it should give you a good idea o
 Below is a full list of the files available in the `examples` directory. These will be referenced and re-linked in the following list of functionalities.
 
 1. [Dynamic Array](examples/ex1_dynamic_array.cgl)
-2. [First Class Functions](examples/ex2_first_class_functions.cgl)
+2. ~~[First Class Functions]~~
 3. [Functions](examples/ex3_functions.cgl)
 4. [Branching](examples/ex4_branching.cgl)
 5. [Looping](examples/ex5_looping.cgl)
 6. [Structs and Tuples](examples/ex6_structs_tuples.cgl)
 7. [Built-in Functions](examples/ex7_builtin.cgl)
 8. [Types and Casting](examples/ex8_types_and_casting.cgl)
-9. [Exceptions](examples/ex9_exceptions.cgl)
-10. [Overloads](examples/ex10_overloads.cgl)
+9. ~~[Exceptions]~~
+10. ~~[Overloads]~~
 11. [Operations](examples/ex11_operations.cgl)
-12. [Interfaces](examples/ex12_interfaces.cgl)
+12. ~~[Interfaces]~~
 
 ## Functionalities
 
@@ -82,34 +82,6 @@ if (condition) {
 }
 ```
 
-`when` acts like a switch statement with more flexibility. It can be used with ranges and negations (similar to Kotlin and Rust). Only works with numerics.
-
-```cgull
-when (c) {
-  1 => println("one"),
-  2 => println("two"),
-  3..=5 => println("three to five"),
-  6..10 => println("six to nine"),
-  !15..20 => println("not 15 to 19"),
-  _ => println("other")
-}
-```
-
-`when` can also be used as an expression, similar to a match statement in Rust. It can return a value based on the case that matches.
-
-```cgull
-string x = 0;
-x = when (x) {
-  0 => "zero",
-  1 => "one",
-  2 => "two",
-  _ => {
-    // multi-statement support, requires return statement
-    return "other";
-  }, // trailing comma is optional
-}
-```
-
 ### Looping
 
 See [examples/ex5_looping.cgl](examples/ex5_looping.cgl) for looping in action.
@@ -127,7 +99,7 @@ int i = 0;
 for (i < 10) {
   println(i);
   if (i == 5) {
-    i += 2;
+    i = i + 2;
     continue;
   }
   i++;
@@ -174,7 +146,7 @@ struct Foo {
 
 Previously linked example applies.
 
-Structs are treated similarly to classes like in C++. They can also take interfaces as parameters. There is no inheritance.
+Structs are treated similarly to classes like in C++. There is no inheritance. Interfaces are planned for the future.
 
 ```cgull
 struct Foo {
@@ -188,19 +160,7 @@ struct Foo {
     fn foo() -> void {}
   }
 
-  static fn bar() -> void {}
-}
-```
-
-See [examples/ex10_overloads.cgl](examples/ex10_overloads.cgl) for operator overloading in action. This includes the $toString method discussed [later](#tostring).
-
-```cgull
-// operator overloading
-struct Foo {
-  // ...
-  fn $operator+(Foo* other) -> Foo {
-    return Foo(this->x + other.x, this->y + other.y, this->z + other.z);
-  }
+  fn bar() -> void {}
 }
 ```
 
@@ -208,13 +168,6 @@ Structs with no methods can be initialized with the following syntax:
 
 ```cgull
 Foo f = Foo(1, 2, 3);
-```
-
-They can also be initialized with tuples.
-
-```cgull
-tuple<int, int, int> t = (1, 2, 3);
-Foo f = Foo(t); // f.x = 1, f.y = 2, f.z = 3
 ```
 
 ### Strongly Typed
@@ -256,38 +209,6 @@ Tuples are accessed via the square brackets operator, similar to arrays.
 tuple<int, int> t = (1, 2);
 println(t[0]); // prints 1
 println(t[1]); // prints 2
-```
-
-#### Interfaces
-
-See [examples/ex12_interfaces.cgl](examples/ex12_interfaces.cgl) for interfaces in action.
-
-```cgull
-interface IFoo<T> {
-  fn foo(T x) -> T;
-  fn bar() -> void;
-}
-```
-
-```cgull
-struct Foo : IFoo<int> {
-  fn foo(int x) -> int {
-    return x + 1;
-  }
-
-  fn bar() -> void {
-    println("bar");
-  }
-}
-```
-
-Interfaces do not need to be generic.
-
-```cgull
-interface IFoo {
-  fn foo() -> void;
-  fn bar() -> void;
-}
 ```
 
 ### Commenting
@@ -357,16 +278,19 @@ See [examples/ex8_types_and_casting.cgl](examples/ex8_types_and_casting.cgl) for
 - `unsigned int` - 32-bit unsigned integer
 - `long` - 64-bit signed integer
 - `unsigned long` - 64-bit unsigned integer
-- `float` - 32-bit floating point number
-- `double` - 64-bit floating point number
+- `float` - 64-bit floating point number
 
 No current support for single unicode characters, may be added in the future.
 
 #### Compound Types
 
 ```cgull
-int arr[10]; // array of 10 integers
-int arr[10] = {1, 2, 3, 4, 5}; // array of 10 integers with initial values (rest are 0)
+int* arr = allocate int[2]; // allocate an array of 2 integers on the heap
+arr[0] = 1;
+arr[1] = 2;
+println(arr[0]); // prints 1
+println(arr[1]); // prints 2
+deallocate[] arr; // free the memory
 ```
 
 ##### Tuples
@@ -388,41 +312,6 @@ See [Composite/User-Defined Types](#compositeuser-defined-types) for tuples.
   - An escaped double quote is represented as `\"`
 - Booleans: `true`, `false`
 
-### First class functions
-
-See [examples/ex2_first_class_functions.cgl](examples/ex2_first_class_functions.cgl) for first class functions in action.
-
-cgull supports first class functions, meaning that functions can be passed as arguments to other functions, returned from functions, and assigned to variables. The signature must be specified for parameters and return types, but you can use just `fn` for syntactic sugar.
-
-```cgull
-// Function with int param and void return type
-fn<int> foo = (int a) {
-  println("Hello, World! " + a);
-}
-
-// Function with int param and int return type
-fn<int -> int> bar = (int x) {
-  return x + 1;
-}
-int result = bar(5); // result is 6
-
-// Multiple parameters and return types
-fn<int, int -> int, int> baz = (int x, int y) {
-  return x + 1, y + 1;
-}
-
-// Syntactic sugar for function signature
-fn sugar = (int a) -> void {
-  println("Hello, World! " + a);
-}
-sugar(5); // prints "Hello, World! 5"
-
-// Function that takes a function as a parameter
-fn<int -> int> apply(fn<int -> int> f, int x) -> int {
-  return f(x);
-}
-```
-
 ### bits as
 
 For reinterpretation of bits, the `bits as` keyword combo is used. If there are more bits than the target type, the most significant bits are discarded. If there are fewer bits than the target type, the most significant bits are set to 0.
@@ -437,37 +326,6 @@ println(x bits as float); // prints 1e-45
 ### $toString
 
 All types have a `$toString` method that returns a string representation of the type. This can be overridden in structs. It is not always necessary to call `$toString` explicitly, as it is called automatically when a string is expected.
-
-### Exceptions
-
-See [examples/ex9_exceptions.cgl](examples/ex9_exceptions.cgl) for exceptions in action.
-
-cgull supports exceptions for error handling. The `try` block is used to catch exceptions, and the `handle` block is used to handle them. The `else` block is executed if no exception is thrown, and the `finally` block is always executed.
-
-```cgull
-try {
-  // stmts
-} handle (exception e) {
-  // "exception" is a catch-all type, specifying a type is more granular
-  // exception<logic_error> e;
-  println(e.$toString());
-} else {
-  // this block is executed if no exception is thrown
-  // it can be placed below finally, but not before handle
-  println("else");
-} else if (condition) {
-  // this block is executed if no exception is thrown and the condition is true
-  // it can also be placed below finally, but not before handle
-} finally {
-  println("finally");
-}
-```
-
-```cgull
-throw exception("Error message");
-// type can be any string which can be specified on the interface for the user to be aware of
-throw exception<logic_error>("Error message");
-```
 
 ### References/Heap
 

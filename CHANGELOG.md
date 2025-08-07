@@ -1,5 +1,24 @@
 # Changelog
 
+## [HW3]
+
+### Added
+
+- All requirements for HW3 (lexing, parsing, duplicate type checking, unresolved type checking, use of a variable before definition or declaration, type mismatch checks everywhere)
+- nullptr literal
+
+### Removed
+
+Due to dwindling time, the following features were removed from the language:
+
+- "when" expressions
+- first-class functions (ran into some issues last minute, couldn't fix in time)
+- interfaces
+- operator overloading
+- generics
+- exceptions
+- sizeof built-in function
+
 ## [HW2]
 
 ### Added

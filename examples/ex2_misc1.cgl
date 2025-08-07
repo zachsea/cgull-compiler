@@ -1,0 +1,38 @@
+/* Example #1 - Misc 1
+ * Due to feature removal, the following is just a random example.
+ * Prints a pyramid of stars.
+ */
+
+fn main() -> int {
+  int height;
+  string input;
+
+  println("Enter the height of the pyramid: ");
+  input = readline();
+  height = input as int;
+
+  for (int i = 1; i <= height; i++) {
+      // spaces
+      for (int j = 1; j <= height - i; ++j) {
+          print(" ");
+      }
+
+      // stars
+      for (int k = 1; k <= (2 * i - 1); ++k) {
+          print("*");
+      }
+
+      println("");
+  }
+
+  return 0;
+}
+
+/* expected output, given the input "5":
+ * Enter the height of the pyramid: (user input)
+ *     *
+ *    ***
+ *   *****
+ *  *******
+ * *********
+ */

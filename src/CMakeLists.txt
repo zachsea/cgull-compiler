@@ -73,8 +73,12 @@ add_custom_target(GenerateParser DEPENDS
     ${ANTLR_GENERATED_DIR}/cgullVisitor.cpp
 )
 
+file(GLOB_RECURSE COMPILER_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/compiler/*.cpp")
+# print the list of files
+message(STATUS "Compiler sources: ${COMPILER_SOURCES}")
 set(SOURCES
-    main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+    ${COMPILER_SOURCES}
     ${ANTLR_GENERATED_DIR}/cgullLexer.cpp
     ${ANTLR_GENERATED_DIR}/cgullParser.cpp
     ${ANTLR_GENERATED_DIR}/cgullBaseListener.cpp
@@ -82,13 +86,13 @@ set(SOURCES
     ${ANTLR_GENERATED_DIR}/cgullBaseVisitor.cpp
 )
 
-add_executable(cgull_grammar ${SOURCES})
+add_executable(cgull ${SOURCES})
 
-add_dependencies(cgull_grammar GenerateParser)
+add_dependencies(cgull GenerateParser)
 
-target_link_libraries(cgull_grammar ${ANTLR4_LIBRARY})
+target_link_libraries(cgull ${ANTLR4_LIBRARY})
 
-target_include_directories(cgull_grammar PRIVATE
+target_include_directories(cgull PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${ANTLR_GENERATED_DIR}
     ${ANTLR4_INCLUDE_DIR}

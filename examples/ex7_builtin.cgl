@@ -1,6 +1,6 @@
 /* Example #7 - Built-in
  * This example showcases the built-in I/O functions in cgull, as well as
- * the sizeof operator, dynamic memory allocation, and strings/string mainipulation.
+ * dynamic memory allocation, and strings/string mainipulation.
  */
 
 struct Song {
@@ -20,6 +20,12 @@ struct Playlist {
 
 const string SEPARATOR = "------------------------";
 
+fn formatTime(int seconds) -> string {
+  int minutes = seconds / 60;
+  seconds = seconds % 60;
+  return (minutes as string) + ":" + (seconds as string);
+}
+
 fn main() -> int {
   println("=== Playlist Creator ===");
 
@@ -32,7 +38,6 @@ fn main() -> int {
 
   Playlist playlist = Playlist(playlistTitle, allocate Song[songCount], songCount);
 
-  println("Size of Song struct: " + sizeof(Song) + " bytes");
   println("Allocated memory for " + songCount + " songs");
 
   // Add songs to the playlist
@@ -47,7 +52,7 @@ fn main() -> int {
     input = read(); // Read until whitespace
     playlist.songs[i].duration = input as int;
 
-    totalDuration += playlist.songs[i].duration;
+    totalDuration = totalDuration + playlist.songs[i].duration;
   }
 
   // Display the playlist

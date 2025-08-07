@@ -1,0 +1,25 @@
+/* Example #10 - Miscellaneous 1
+ * Due to feature removal, the following is just a random example.
+ * This showcases more usage of bitwise operations.
+ */
+
+fn countBits(int n) -> int {
+  int count = 0;
+  for (n > 0) {
+    count = count + (n & 1);
+    n = n >> 1;
+  }
+  return count;
+}
+
+fn main() -> int {
+  println("Enter a number: ");
+  string input = readline();
+  int n = input as int;
+  int result = countBits(n);
+  println("Number of 1 bits in " + n + " is: " + result);
+}
+
+/* expected output:
+ * Number of 1 bits in 5 is: 2
+ */

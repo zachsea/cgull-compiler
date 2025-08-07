@@ -1,0 +1,4 @@
+fn main() -> int{
+  int a = 5;
+  float a = 3.14;
+}

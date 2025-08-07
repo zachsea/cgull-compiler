@@ -1,0 +1,25 @@
+fn main() -> int {
+  // use before declaration
+  if ((number % 2) == 0) {
+    println("Even number");
+  } else {
+    println("Odd number");
+  }
+  println("Provide a number: ");
+
+  // use before definition
+  const string input;
+  int number = input as int;
+  // assignment to a const variable
+  input = readline();
+
+  if (number < 0) {
+    println("Negative number");
+  } else if (number == 0) {
+    println("Zero");
+  }
+
+  if (number == 897) {
+    println("good guess, " + number);
+  }
+}

@@ -1,16 +1,4 @@
-/* Example #1 - Dynamic Array
- * Below is what a very primitive implementation of a dynamic array
- * would look like in cgull. It is not a perfect implementation.
- * This sample covers a large set of features not limited to:
- * Functions, structs, access blocks, destructor, memory management
- * (allocation, deallocation), implicit conversions, fixed-sized arrays, and more.
- *
- * See other examples for more granular examples of the features.
- */
-
 struct IntVector {
-  // members may be prefixed with access modifiers public (redundant) or private
-  // or they can be placed in a block with the access modifier
   private {
     int size = 0;
     int capacity = 0;
@@ -28,27 +16,24 @@ struct IntVector {
   }
 
   fn getSize() -> int {
+    throw "Index out of bounds" if (size < 0 || size > capacity);
     return size;
   }
 
   fn push_back(int v) {
     if (size == capacity) {
-      // ternary
       resize(if (capacity > 0) capacity * 2 else 1);
     }
     data[size++] = v;
   }
 
-
   fn at(int index) -> int {
     return data[index];
   }
-  // corresponds to object[index] = value
   fn set(int index, int value) {
     data[index] = value;
   }
 
-  // defaults to memory address
   fn $toString() -> string {
     string result = "[";
     for (int i = 0; i < size; i++) {
@@ -69,18 +54,24 @@ struct IntVector {
   }
 }
 
+// @ is an invalid token
+@invalid_token
+
 fn main() -> int {
-  // both are stack allocated
   IntVector vec = IntVector();
   IntVector vec2 = IntVector();
   for (int i = 0; i < 10; i++) {
     vec.push_back(i);
     vec2.push_back(i * 2);
   }
-  // $toString will be called implicitly since a string is expected
   println(vec);
   println(vec2);
-  // return 0 is implicit
+
+  // unterminated string
+  string badString = "This string is not terminated;
+
+  // illegal character
+  int x = 10 # 5;
 }
 
 /* expected output:

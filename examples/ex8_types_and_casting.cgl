@@ -9,8 +9,7 @@ fn main() -> int {
     short s = 0b1111111111111111; // 16-bit signed integer (max value: 32767)
     int i = 2147483647;
     long l = 9223372036854775807;
-    float f = '+inf';
-    double d = 3.141592653589793;
+    float f = 3.141592653589793;
 
     // printing scalar types
     println("Boolean value: " + b);
@@ -19,25 +18,22 @@ fn main() -> int {
     println("Int value: " + i);
     println("Long value: " + l);
     println("Float value: " + f);
-    println("Double value: " + d);
 
     // smaller to larger type implicit casting
     int char_to_int = c;      // char -> int
     long int_to_long = i;     // int -> long
-    double float_to_double = f; // float -> double
 
     println("\nImplicit casting:");
     println("char to int: " + char_to_int);
     println("int to long: " + int_to_long);
-    println("float to double: " + float_to_double);
 
     // Explicit casting with 'as'
     println("\nExplicit casting with 'as':");
     char int_to_char = i as char;  // int -> char (potential data loss)
-    int double_to_int = d as int;  // double -> int (truncation)
+    int float_to_int = f as int;  // float -> int (truncation)
 
     println("int to char: " + int_to_char);
-    println("double to int: " + double_to_int);
+    println("float to int: " + float_to_int);
 
     // bit reinterpretation with 'bits as'
     println("\nBit reinterpretation with 'bits as':");

@@ -1,0 +1,34 @@
+// missing closing parenthesis in return type
+fn swap(int a, int b) -> (int, int {
+  return (b, a);
+}
+
+// missing closing angle bracket in tuple type
+fn multiply(tuple<int, int, float> t1, tuple<int, int, float t2) -> (int, int, float) {
+  // missing semicolon
+  return (t1[0] * t2[0], t1[1] * t2[1], t1[2] * t2[2])
+}
+
+fn main() -> int {
+  int a = 5;
+  int b = 10;
+  // missing closing parenthesis in function call
+  tuple<int, int> swapped = swap(a, b;
+  println("Original values: " + a + ", " + b);
+  println("Swapped values: " + swapped[0] + ", " + swapped[1] + "\n");
+  // missing opening parenthesis in tuple initialization
+  tuple<int, int, float> t1 = 1, 2, 3.0);
+  tuple<int, int, float> t2 = (4, 5, 6.0);
+  tuple<int, int, float> result = multiply(t1, t2);
+  println("t1: " + t1[0] + ", " + t1[1] + ", " + t1[2]);
+  println("t2: " + t2[0] + ", " + t2[1] + ", " + t2[2]);
+  // incorrect string concatenation syntax
+  println("Result: " + result[0], ", " + result[1] + ", " + result[2]);
+  // unescaped quote in string
+  println("This is a string with an unescaped quote: "Hello World"");
+
+  return 0
+}  // Error 7: Missing semicolon after return statement
+
+// missing opening multicomment
+*/

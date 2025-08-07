@@ -1,18 +1,8 @@
-/* Example #6 - Structs/Tuples
- * This example showcases the composite data types in cgull.
- * It demonstrates structs, access modifiers, tuples, and destructuring.
- * It also shows how structs dont have constructors, but can have their public
- * members initialized in order or with default values. Structs offer a way
- * to associate additional scope with function(s).
- */
-
 struct Point {
   private {
-    tuple<int, int> coords = (0, 0); // default value
+    tuple<int, int> coords = (0, 0);
   }
-  // or private per member
   private float secret = 0.0;
-  // public is redundant
   public string name = "Point";
 
   public {
@@ -25,33 +15,31 @@ struct Point {
   }
 }
 
+// duplicate type definition error
+struct Point {
+  private {
+    tuple<int, int> coords = (0, 0);
+  }
+  private float secret = 0.0;
+}
+
 fn returnsMultiple() -> (int, int) {
   return (1, 2);
 }
 
 fn main() -> int {
   Point p1 = Point("Point");
-  // using initialize statement
   Point p2 = Point("Point 2");
   p1.setCoords(1, 2);
   p2.setCoords(3, 4);
 
-  // destructuring
   int x1, int y1 = p1.getCoords();
   int x2, int y2 = p2.getCoords();
   println("p1: " + p1.name + " (" + x1 + ", " + y1 + ")");
   println("p2: " + p2.name + " (" + x2 + ", " + y2 + ")");
 
-  // multiple values from function can be placed in a tuple, too.
-  // tuple indexing is 0-based like arrays
   tuple<int, int> test = returnsMultiple();
   println("test: (" + test[0] + ", " + test[1] + ")");
 
   return 0;
 }
-
-/* expected output:
- * p1: Point (1, 2)
- * p2: Point 2 (3, 4)
- * test: (1, 2)
- */

@@ -6,24 +6,20 @@ program: top_level_statement+ EOF ;
 
 expression
     : base_expression
-    | if_expression
-    | when_expression
     ;
 
 base_expression
     : '(' expression ')'
+    | allocate_expression
     | index_expression
     | dereference_expression
     | reference_expression
     | literal
     | function_call
-    | allocate_expression
     | cast_expression
     | unary_expression
     | tuple_expression
-    | array_expression
     | variable
-    | function_expression
     | base_expression (MULT_OP | DIV_OP | MOD_OP) base_expression
     | base_expression (PLUS_OP | MINUS_OP) base_expression
     | base_expression (BITWISE_LEFT_SHIFT_OP | BITWISE_RIGHT_SHIFT_OP) base_expression
@@ -34,6 +30,7 @@ base_expression
     | base_expression BITWISE_OR_OP base_expression
     | base_expression AND_OP base_expression
     | base_expression OR_OP base_expression
+    | if_expression
     ;
 
 expression_list
@@ -45,10 +42,6 @@ variable
     | field_access
     ;
 
-variable_list
-    : variable (',' variable)+
-    ;
-
 index_expression
     : indexable '[' expression ']'
     ;
@@ -56,14 +49,12 @@ index_expression
 indexable
     : IDENTIFIER
     | '(' expression ')'
-    | allocate_expression
     | indexable '[' expression ']'
     | indexable '(' expression_list? ')'
-    | indexable ('.' | '->') IDENTIFIER
     ;
 
 dereference_expression
-    : '*' dereferenceable
+    : '*'+ dereferenceable
     ;
 
 dereferenceable
@@ -90,14 +81,15 @@ literal
     | BINARY_LITERAL
     | BOOLEAN_TRUE
     | BOOLEAN_FALSE
+    | NULLPTR_LITERAL
     ;
 
 function_call
-    : ((FN_SPECIAL? IDENTIFIER) | index_expression | generic_identifier) '(' expression_list? ')'
+    : (FN_SPECIAL? IDENTIFIER | index_expression) '(' expression_list? ')'
     ;
 
 allocate_expression
-    : ALLOCATE (allocate_primitive | allocate_array | allocate_struct | allocate_function)
+    : ALLOCATE (allocate_primitive | allocate_array | allocate_struct)
     ;
 
 allocate_primitive
@@ -109,39 +101,32 @@ allocate_array
     ;
 
 allocate_struct
-    : (IDENTIFIER | generic_identifier) '(' expression_list? ')'
-    ;
-
-allocate_function
-    : function_type function_expression
-    ;
-
-function_expression
-    : '(' parameter_list? ')' function_block
+    : IDENTIFIER '(' expression_list? ')'
     ;
 
 parameter
-    : type IDENTIFIER
+    : CONST? type IDENTIFIER
     ;
 
 parameter_list
     : parameter (',' parameter)*
     ;
 
-field_access
-    : field (('.' | '->') field)+
+// this should be a normal operator later, too late to change now...
+access_operator
+    : '.' | '->'
     ;
 
-field_function_call
-    : field (('.' | '->') field)* ('.' | '->') function_call
+field_access
+    : field (access_operator field)+
     ;
 
 field
-    : (function_call | IDENTIFIER | index_expression)
+    : (function_call | IDENTIFIER | index_expression | '(' expression ')')
     ;
 
 cast_expression
-    : IDENTIFIER (BITS_AS_CAST | AS_CAST) primitive_type
+    : (IDENTIFIER | '(' expression ')') (BITS_AS_CAST | AS_CAST) primitive_type
     ;
 
 unary_expression
@@ -159,78 +144,26 @@ tuple_expression
     : '(' expression_list ')'
     ;
 
-array_expression
-    : '{' expression_list '}'
-    ;
-
 if_expression
-    : base_expression IF base_expression ELSE base_expression
-    ;
-
-when_expression
-    : WHEN '(' expression ')' when_block
-    ;
-
-when_block
-    : '{' when_entry* '}'
-    ;
-
-when_entry
-    : when_pattern WHEN_ARROW (expression | when_block_expr) ','?
-    ;
-
-when_pattern
-    : literal
-    | when_negation
-    | when_range
-    | when_default
-    ;
-
-when_range
-    : literal (INCLUSIVE_RANGE | EXCLUSIVE_RANGE) literal
-    ;
-
-when_negation:
-    NOT_OP (literal | when_range | when_range)
-    ;
-
-when_default
-    : '_'
-    ;
-
-when_block_expr
-    : '{' function_level_statement* return_statement? '}'
+    : IF base_expression base_expression ELSE base_expression
     ;
 
 /* ----- statements ----- */
 
 top_level_statement
-    : interface_definition
-    | struct_definition
+    : struct_definition
     | function_definition
     | assignment_statement
-    | variable_declaration
+    | variable_declaration_statement
     | destructuring_statement
     ;
 
-interface_definition
-    : INTERFACE (IDENTIFIER | generic_identifier) '{' interface_body '}'
-    ;
-
-interface_body
-    : interface_statement+
-    ;
-
-interface_statement
-    : FN IDENTIFIER '(' parameter_list? ')' ( '->' '(' type_list ')' | '->' type_list )? SEMICOLON
-    ;
-
 struct_definition
-    : STRUCT (IDENTIFIER | generic_definition) (':' interface_list)? '{' struct_body '}'
+    : STRUCT IDENTIFIER '{' struct_body '}'
     ;
 
 struct_statement
-    : variable_declaration | special_function_definition | function_definition
+    : variable_declaration_statement | function_definition
     ;
 
 struct_body
@@ -245,65 +178,50 @@ access_block
     : (PUBLIC | PRIVATE) '{' struct_statement* '}'
     ;
 
-interface_list
-    : (IDENTIFIER | generic_identifier | generic_definition) (',' (IDENTIFIER | generic_identifier | generic_definition))*
-    ;
-
 function_definition
-    : FN IDENTIFIER '(' parameter_list? ')' ( '->' '(' type_list ')' | '->' type_list )? function_block
-    ;
-
-special_function_definition
-    : FN FN_SPECIAL IDENTIFIER overridable_operators? '(' parameter_list? ')' ( '->' '(' type_list ')' | '->' type_list )? function_block
-    ;
-
-overridable_operators
-    : (PLUS_OP | MINUS_OP | MULT_OP | DIV_OP | MOD_OP | INCREMENT_OP | DECREMENT_OP | EQUAL_OP | NOT_EQUAL_OP | LESS_OP | GREATER_OP | LESS_EQUAL_OP | GREATER_EQUAL_OP
-      | AND_OP | OR_OP | BITWISE_AND_OP | BITWISE_OR_OP | BITWISE_XOR_OP | BITWISE_NOT_OP | BITWISE_LEFT_SHIFT_OP | BITWISE_RIGHT_SHIFT_OP | ARRAY_OP)
+    : FN (IDENTIFIER | FN_SPECIAL IDENTIFIER) '(' parameter_list? ')' ( '->' '(' type_list ')' | '->' type )? function_block
     ;
 
 assignment_statement
-    : (dereference_expression | index_expression | variable) (ASSIGN | op_assign) expression SEMICOLON
-    ;
-
-op_assign
-    : (PLUS_OP | MINUS_OP | MULT_OP | DIV_OP | MOD_OP | BITWISE_AND_OP | BITWISE_OR_OP | BITWISE_XOR_OP | BITWISE_NOT_OP | BITWISE_LEFT_SHIFT_OP | BITWISE_RIGHT_SHIFT_OP) ASSIGN
+    : (dereference_expression | index_expression | variable) ASSIGN expression SEMICOLON
     ;
 
 variable_declaration
-    : CONST? type IDENTIFIER (ASSIGN expression)? SEMICOLON
+    : CONST? type IDENTIFIER (ASSIGN expression)?
+    ;
+
+variable_declaration_statement
+    : variable_declaration SEMICOLON
     ;
 
 variable_declaration_list
-    : type IDENTIFIER (',' type IDENTIFIER)+
+    : variable_declaration (',' variable_declaration)+
     ;
 
 destructuring_statement
-    : destructuring_declaration
-    | destructuring_assignment
+    : destructuring_list ASSIGN expression SEMICOLON
     ;
-destructuring_assignment
-    : variable_list ASSIGN expression SEMICOLON
+
+destructuring_list
+    : destructuring_item (',' destructuring_item)*
     ;
-destructuring_declaration
-    : variable_declaration_list ASSIGN expression SEMICOLON
+
+destructuring_item
+    : CONST? type IDENTIFIER
+    | variable
     ;
 
 function_level_statement
-    : struct_definition
-    | loop_statement
+    : loop_statement
     | assignment_statement
-    | variable_declaration
+    | variable_declaration_statement
     | return_statement
     | deallocate_statement
     | function_call_statement
-    | throw_statement
-    | try_statement
     | if_statement
     | unary_statement
     | break_statement
     | destructuring_statement
-    | when_statement
     ;
 
 function_block
@@ -330,27 +248,14 @@ while_statement
     ;
 
 for_statement
-    : FOR '(' for_init SEMICOLON expression SEMICOLON expression ')' branch_block
-    ;
-
-for_init
-    : CONST? type IDENTIFIER (ASSIGN expression)?
-    | for_declaration
-    ;
-
-for_declaration
-    : variable_declaration | for_function_declaration
-    ;
-
-for_function_declaration
-    : function_type IDENTIFIER (ASSIGN function_expression)?
+    : FOR '(' variable_declaration? SEMICOLON expression SEMICOLON expression ')' branch_block
     ;
 
 infinite_loop_statement
     : FOR branch_block ;
 
 return_statement
-    : RETURN expression_list? SEMICOLON
+    : RETURN expression? SEMICOLON
     ;
 
 deallocate_statement
@@ -358,23 +263,7 @@ deallocate_statement
     ;
 
 function_call_statement
-    : (function_call | field_function_call) SEMICOLON
-    ;
-
-throw_statement
-    : THROW EXCEPTION '<' IDENTIFIER '>' '(' expression ')' SEMICOLON
-    ;
-
-try_statement
-    : TRY branch_block (handle_block)* (ELSE_IF '(' expression ')' branch_block)* (ELSE branch_block)? (FINALLY branch_block)?
-    ;
-
-handle_block
-    : HANDLE '(' exception_type IDENTIFIER ')' branch_block
-    ;
-
-exception_type
-    : EXCEPTION '<' IDENTIFIER '>' | EXCEPTION
+    : (function_call | field_access) SEMICOLON
     ;
 
 if_statement
@@ -390,22 +279,14 @@ break_statement
     : BREAK SEMICOLON
     ;
 
-when_statement
-    : when_expression
-    ;
-
 /* ----- types ----- */
 
 type
-    : base_type array_suffix? '*'?
+    : (primitive_type | user_defined_type | tuple_type) array_suffix? '*'*
     ;
 
 array_suffix
     : ARRAY_OP
-    ;
-
-base_type
-    : primitive_type | user_defined_type | function_type
     ;
 
 type_list
@@ -414,28 +295,15 @@ type_list
 
 primitive_type
     : (SIGNED_TYPE | UNSIGNED_TYPE)? (INT_TYPE | SHORT_TYPE | LONG_TYPE | CHAR_TYPE)
-    | FLOAT_TYPE | DOUBLE_TYPE | STRING_TYPE | BOOLEAN_TYPE | VOID_TYPE
+    | FLOAT_TYPE | STRING_TYPE | BOOLEAN_TYPE | VOID_TYPE
     ;
 
 user_defined_type
     : IDENTIFIER
-    | generic_identifier
     ;
 
-function_type
-    : FN '<' type_list '->' type_list '>'
-    ;
-
-generic_identifier
-    : IDENTIFIER '<' type_list '>'
-    ;
-
-generic_definition
-    : IDENTIFIER '<' identifier_list '>'
-    ;
-
-identifier_list
-    : IDENTIFIER (',' IDENTIFIER)*
+tuple_type
+    : TUPLE '<' type_list '>'
     ;
 
 /* ----- lexer ----- */
@@ -483,14 +351,6 @@ FOR: 'for' ;
 UNTIL: 'until' ;
 BREAK: 'break' ;
 
-THROW: 'throw' ;
-TRY: 'try' ;
-HANDLE: 'handle' ;
-FINALLY: 'finally' ;
-EXCEPTION: 'exception' ;
-
-WHEN: 'when' ;
-WHEN_ARROW: '=>' ;
 INCLUSIVE_RANGE: '..=' ;
 EXCLUSIVE_RANGE: '..' ;
 
@@ -499,7 +359,6 @@ SHORT_TYPE: 'short' ;
 LONG_TYPE: 'long' ;
 FLOAT_TYPE: 'float' ;
 CHAR_TYPE: 'char' ;
-DOUBLE_TYPE: 'double' ;
 STRING_TYPE: 'string' ;
 BOOLEAN_TYPE: 'bool' ;
 VOID_TYPE: 'void' ;
@@ -507,8 +366,7 @@ UNSIGNED_TYPE: 'unsigned' ;
 SIGNED_TYPE: 'signed' ;
 
 STRUCT: 'struct' ;
-INTERFACE: 'interface' ;
-STATIC: 'static' ;
+TUPLE: 'tuple' ;
 CONST: 'const' ;
 PUBLIC: 'public' ;
 PRIVATE: 'private' ;
@@ -530,6 +388,7 @@ HEX_LITERAL: '0x' [0-9a-fA-F]+ ;
 BINARY_LITERAL: '0b' [01]+ ;
 BOOLEAN_TRUE: 'true' ;
 BOOLEAN_FALSE: 'false' ;
+NULLPTR_LITERAL: 'nullptr' ;
 
 WS: [ \t\r\n]+ -> skip ;
 COMMENT: '//' ~[\r\n]* -> skip ;

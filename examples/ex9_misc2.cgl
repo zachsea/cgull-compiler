@@ -1,0 +1,58 @@
+/* Example #9 - Miscellaneous 1
+ * Due to feature removal, the following is just a random example.
+ * This example demonstrates more usage of arrays.
+ */
+
+struct Game {
+  int id = 0;
+  string name = "";
+  string genre = "";
+  int rating = 0;
+
+  fn $toString() -> string {
+    return "Game ID: " + id + "\n" +
+           "Game Name: " + name + "\n" +
+           "Game Genre: " + genre + "\n" +
+           "Game Rating: " + rating;
+  }
+}
+
+fn main() -> int {
+  int gameSize = 3;
+  Game* games = allocate Game[gameSize];
+  games[0] = Game(0, "Balatro", "Rogue-like", 10);
+  games[1] = Game(1, "Doom", "FPS", 9);
+  games[2] = Game(2, "Half-Life", "FPS", 10);
+
+  // sort ascending via bubble sort
+  for (int i = 0; i < gameSize; i++) {
+    for (int j = 0; j < gameSize - i - 1; j++) {
+      if (games[j].rating > games[j + 1].rating) {
+        Game temp = games[j];
+        games[j] = games[j + 1];
+        games[j + 1] = temp;
+      }
+    }
+  }
+  // print sorted games
+  for (int i = 0; i < gameSize; i++) {
+    println(games[i] + "\n");
+  }
+}
+
+/* expected output:
+ * Game ID: 1
+ * Game Name: Doom
+ * Game Genre: FPS
+ * Game Rating: 9
+
+ * Game ID: 0
+ * Game Name: Balatro
+ * Game Genre: Rogue-like
+ * Game Rating: 10
+
+ * Game ID: 2
+ * Game Name: Half-Life
+ * Game Genre: FPS
+ * Game Rating: 10
+ */

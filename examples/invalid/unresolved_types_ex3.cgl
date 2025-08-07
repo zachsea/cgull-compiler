@@ -1,24 +1,13 @@
-/* Example #3 - Functions
- * This example showcases functions in cgull, particularly
- * their syntax for passing variables, recursion, returns,
- * and multiple return values.
- */
-
-struct Node {
-  char value;
-  Node* next;
-}
+// missing node type definition, resolution error
 
 fn printNodes(Node* head) -> void {
   if (!head) {
     return;
   }
   println(head->value);
-  // recursive call
   printNodes(head->next);
 }
 
-// void return can be omitted
 fn deallocateList(Node* head) {
   Node* curr = head;
   for (curr) {
@@ -28,12 +17,10 @@ fn deallocateList(Node* head) {
   }
 }
 
-// Node*, Node* is also valid for multiple return values
 fn getNeighbors(Node* head, char c) -> (Node*, Node*) {
   Node* prev = nullptr;
   Node* curr = head;
   Node* next = nullptr;
-  // while loop, similar to Golang's for loop
   for (curr != nullptr) {
     if (curr->value == c) {
       next = curr->next;
@@ -46,7 +33,6 @@ fn getNeighbors(Node* head, char c) -> (Node*, Node*) {
 }
 
 fn main() -> int {
-  // dynamic memory allocation
   Node* head = allocate Node('A', nullptr);
   head->next = allocate Node('B', nullptr);
   head->next->next = allocate Node('C', nullptr);
@@ -62,11 +48,3 @@ fn main() -> int {
 
   return 0;
 }
-
-/* expected output:
- * A
- * B
- * C
- * Previous: A
- * Next: C
- */
