@@ -273,6 +273,14 @@ void BytecodeIRGeneratorListener::exitExpression(cgullParser::ExpressionContext*
 }
 
 void BytecodeIRGeneratorListener::enterBase_expression(cgullParser::Base_expressionContext* ctx) {
+  if (ctx->AND_OP() || ctx->OR_OP()) {
+    // reserve and setup metadata for logical expressions
+    auto it = expressionLabelsMap.find(ctx);
+    if (it == expressionLabelsMap.end()) {
+      handleLogicalExpression(ctx);
+    }
+  }
+
   // handle pushing literals
   if (ctx->literal()) {
     // check what type of literal it is from our expression types
@@ -322,7 +330,6 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
           "java/lang/invoke/CallSite[\"\u0001\u0001\"]}");
       currentFunction->instructions.push_back(rawInstruction);
     }
-    return;
   } else {
     std::string prefix;
     switch (primitiveType->getPrimitiveKind()) {
@@ -424,27 +431,21 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
       }
 
       if (ctx->EQUAL_OP()) {
-        // generate code for ==
         auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmpeq " + trueLabel);
         currentFunction->instructions.push_back(rawInstruction);
       } else if (ctx->NOT_EQUAL_OP()) {
-        // generate code for !=
         auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmpne " + trueLabel);
         currentFunction->instructions.push_back(rawInstruction);
       } else if (ctx->LESS_OP()) {
-        // generate code for <
         auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmplt " + trueLabel);
         currentFunction->instructions.push_back(rawInstruction);
       } else if (ctx->GREATER_OP()) {
-        // generate code for >
         auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmpgt " + trueLabel);
         currentFunction->instructions.push_back(rawInstruction);
       } else if (ctx->LESS_EQUAL_OP()) {
-        // generate code for <=
         auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmple " + trueLabel);
         currentFunction->instructions.push_back(rawInstruction);
       } else if (ctx->GREATER_EQUAL_OP()) {
-        // generate code for >=
         auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmpge " + trueLabel);
         currentFunction->instructions.push_back(rawInstruction);
       }
@@ -463,96 +464,139 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
       auto endLabelInstruction = std::make_shared<IRRawInstruction>(endLabel + ":");
       currentFunction->instructions.push_back(endLabelInstruction);
     } else if (ctx->AND_OP()) {
-      // reserve labels
-      auto falseLabel = generateLabel();
-      auto endLabel = generateLabel();
-
-      // the right operand value is already on stack, we don't want that yet
-      auto popRightInstruction = std::make_shared<IRRawInstruction>("pop");
-      currentFunction->instructions.push_back(popRightInstruction);
-
-      // if the left operand is false, we can just return false
-      auto leftRawInstruction = std::make_shared<IRRawInstruction>("ifeq " + falseLabel);
-      currentFunction->instructions.push_back(leftRawInstruction);
-
-      // otherwise, we need to evaluate the right operand
-      auto rightExpr = ctx->base_expression(1);
-      if (rightExpr) {
-        // Process base_expression manually
-        enterBase_expression(rightExpr);
-        exitBase_expression(rightExpr);
-
-        // if the right operand is false, we can just return false
-        auto rightRawInstruction = std::make_shared<IRRawInstruction>("ifeq " + falseLabel);
-        currentFunction->instructions.push_back(rightRawInstruction);
+      // retrieve the labels for this expression
+      auto it = expressionLabelsMap.find(ctx);
+      if (it == expressionLabelsMap.end()) {
+        handleLogicalExpression(ctx);
+        it = expressionLabelsMap.find(ctx);
       }
 
-      // if both operands are true, we can return true
-      auto pushTrueInstruction = std::make_shared<IRRawInstruction>("iconst 1");
-      currentFunction->instructions.push_back(pushTrueInstruction);
+      ExpressionLabels& labels = it->second;
 
-      // jump past falseLabel to endLabel
-      auto jumpInstruction = std::make_shared<IRRawInstruction>("goto " + endLabel);
-      currentFunction->instructions.push_back(jumpInstruction);
+      // only place the exit label if we've processed the expression
+      if (labels.processed) {
+        auto exitLabel = std::make_shared<IRRawInstruction>(labels.exitLabel + ":");
+        currentFunction->instructions.push_back(exitLabel);
+      }
 
-      // falseLabel: one of the operands was false
-      auto falseLabelInstruction = std::make_shared<IRRawInstruction>(falseLabel + ":");
-      currentFunction->instructions.push_back(falseLabelInstruction);
-
-      // push false (0) onto the stack
-      auto pushFalseInstruction = std::make_shared<IRRawInstruction>("iconst 0");
-      currentFunction->instructions.push_back(pushFalseInstruction);
-
-      // endLabel:
-      auto endLabelInstruction = std::make_shared<IRRawInstruction>(endLabel + ":");
-      currentFunction->instructions.push_back(endLabelInstruction);
     } else if (ctx->OR_OP()) {
-      // reserve labels
-      auto trueLabel = generateLabel();
-      auto endLabel = generateLabel();
-
-      // the right operand value is already on stack, we don't want that yet
-      auto popRightInstruction = std::make_shared<IRRawInstruction>("pop");
-      currentFunction->instructions.push_back(popRightInstruction);
-
-      // if the left operand is true, we can just return true
-      auto leftRawInstruction = std::make_shared<IRRawInstruction>("ifne " + trueLabel);
-      currentFunction->instructions.push_back(leftRawInstruction);
-
-      // otherwise, we need to evaluate the right operand
-      auto rightExpr = ctx->base_expression(1);
-      if (rightExpr) {
-        // Process base_expression manually
-        enterBase_expression(rightExpr);
-        exitBase_expression(rightExpr);
-
-        // if the right operand is true, we can just return true
-        auto rightRawInstruction = std::make_shared<IRRawInstruction>("ifne " + trueLabel);
-        currentFunction->instructions.push_back(rightRawInstruction);
+      // retrieve the labels for this expression
+      auto it = expressionLabelsMap.find(ctx);
+      if (it == expressionLabelsMap.end()) {
+        handleLogicalExpression(ctx);
+        it = expressionLabelsMap.find(ctx);
       }
 
-      // if both operands are false, we can return false
-      auto pushFalseInstruction = std::make_shared<IRRawInstruction>("iconst 0");
-      currentFunction->instructions.push_back(pushFalseInstruction);
+      ExpressionLabels& labels = it->second;
 
-      // jump past trueLabel to endLabel
-      auto jumpInstruction = std::make_shared<IRRawInstruction>("goto " + endLabel);
-      currentFunction->instructions.push_back(jumpInstruction);
-
-      // trueLabel: one of the operands was true
-      auto trueLabelInstruction = std::make_shared<IRRawInstruction>(trueLabel + ":");
-      currentFunction->instructions.push_back(trueLabelInstruction);
-
-      // push true (1) onto the stack
-      auto pushTrueInstruction = std::make_shared<IRRawInstruction>("iconst 1");
-      currentFunction->instructions.push_back(pushTrueInstruction);
-
-      // endLabel:
-      auto endLabelInstruction = std::make_shared<IRRawInstruction>(endLabel + ":");
-      currentFunction->instructions.push_back(endLabelInstruction);
+      // only place the exit label if we've processed the expression
+      if (labels.processed) {
+        auto exitLabel = std::make_shared<IRRawInstruction>(labels.exitLabel + ":");
+        currentFunction->instructions.push_back(exitLabel);
+      }
     }
   }
   generateStringConversion(ctx);
+
+  // handle if expressions
+
+  auto parent = ctx->parent;
+  if (!parent)
+    return;
+  auto ifExpr = dynamic_cast<cgullParser::If_expressionContext*>(parent);
+  if (ifExpr && ifExpr->base_expression(0) == ctx) {
+    // jump to the else expression if stack is false
+    auto it = ifExpressionLabelsMap.find(ifExpr);
+    if (it != ifExpressionLabelsMap.end()) {
+      auto& labels = it->second;
+      auto jumpInst = std::make_shared<IRRawInstruction>("ifeq " + labels.conditionLabels[0]);
+      currentFunction->instructions.push_back(jumpInst);
+    }
+  } else if (ifExpr && ifExpr->base_expression(1) == ctx) {
+    // jump to the end of the if expression
+    auto it = ifExpressionLabelsMap.find(ifExpr);
+    if (it != ifExpressionLabelsMap.end()) {
+      auto& labels = it->second;
+      auto jumpInst = std::make_shared<IRRawInstruction>("goto " + labels.endIfLabel);
+      currentFunction->instructions.push_back(jumpInst);
+      // place label for jumping to the else condition
+      auto labelInst = std::make_shared<IRRawInstruction>(labels.conditionLabels[0] + ":");
+      currentFunction->instructions.push_back(labelInst);
+    }
+  } else if (ifExpr && ifExpr->base_expression(2) == ctx) {
+    // place label for jumping to the end of the if expression
+    auto it = ifExpressionLabelsMap.find(ifExpr);
+    if (it != ifExpressionLabelsMap.end()) {
+      auto& labels = it->second;
+      auto labelInst = std::make_shared<IRRawInstruction>(labels.endIfLabel + ":");
+      currentFunction->instructions.push_back(labelInst);
+    }
+  }
+
+  // handle AND/OR parent relationships for short-circuiting
+  if (ctx->parent) {
+    auto parentCtx = dynamic_cast<cgullParser::Base_expressionContext*>(ctx->parent);
+    if (parentCtx) {
+      auto it = expressionLabelsMap.find(parentCtx);
+      if (it != expressionLabelsMap.end() && !it->second.processed) {
+        ExpressionLabels& labels = it->second;
+
+        if (parentCtx->AND_OP() && ctx == parentCtx->base_expression(0)) {
+          // left side of AND finished evaluating, if it was false jump to fallthrough
+          auto leftFalseJump = std::make_shared<IRRawInstruction>("ifeq " + labels.fallthroughLabel);
+          currentFunction->instructions.push_back(leftFalseJump);
+        } else if (parentCtx->OR_OP() && ctx == parentCtx->base_expression(0)) {
+          // left side of OR finished evaluating, if it was true jump to fallthrough (opposite of AND)
+          auto leftTrueJump = std::make_shared<IRRawInstruction>("ifne " + labels.fallthroughLabel);
+          currentFunction->instructions.push_back(leftTrueJump);
+        } else if (parentCtx->AND_OP() && ctx == parentCtx->base_expression(1)) {
+          // right side of AND finished evaluating, if it was false jump to fallthrough
+          auto rightFalseJump = std::make_shared<IRRawInstruction>("ifeq " + labels.fallthroughLabel);
+          currentFunction->instructions.push_back(rightFalseJump);
+
+          // push true since both operands are true
+          auto pushTrue = std::make_shared<IRRawInstruction>("iconst 1");
+          currentFunction->instructions.push_back(pushTrue);
+
+          // jump to the exit label (both operands are true)
+          auto jumpToExit = std::make_shared<IRRawInstruction>("goto " + labels.exitLabel);
+          currentFunction->instructions.push_back(jumpToExit);
+
+          // place the fallthrough label here (one of the operands was false)
+          auto fallthroughLabel = std::make_shared<IRRawInstruction>(labels.fallthroughLabel + ":");
+          currentFunction->instructions.push_back(fallthroughLabel);
+
+          // push false since one of the operands was false
+          auto pushFalse = std::make_shared<IRRawInstruction>("iconst 0");
+          currentFunction->instructions.push_back(pushFalse);
+
+          // mark this expression as processed to avoid duplicate label placement
+          labels.processed = true;
+        } else if (parentCtx->OR_OP() && ctx == parentCtx->base_expression(1)) {
+          // right side of OR finished evaluating, if it was true jump to fallthrough
+          auto rightTrueJump = std::make_shared<IRRawInstruction>("ifne " + labels.fallthroughLabel);
+          currentFunction->instructions.push_back(rightTrueJump);
+
+          // push false since both operands are false
+          auto pushFalse = std::make_shared<IRRawInstruction>("iconst 0");
+          currentFunction->instructions.push_back(pushFalse);
+
+          // jump to the exit label (both operands are false)
+          auto jumpToExit = std::make_shared<IRRawInstruction>("goto " + labels.exitLabel);
+          currentFunction->instructions.push_back(jumpToExit);
+
+          // place the fallthrough label here (one of the operands was true)
+          auto fallthroughLabel = std::make_shared<IRRawInstruction>(labels.fallthroughLabel + ":");
+          currentFunction->instructions.push_back(fallthroughLabel);
+          auto pushTrue = std::make_shared<IRRawInstruction>("iconst 1");
+          currentFunction->instructions.push_back(pushTrue);
+
+          // again, mark this expression as processed to avoid duplicate label placement
+          labels.processed = true;
+        }
+      }
+    }
+  }
 }
 
 void BytecodeIRGeneratorListener::enterVariable_declaration(cgullParser::Variable_declarationContext* ctx) {
@@ -880,6 +924,16 @@ void BytecodeIRGeneratorListener::enterIf_statement(cgullParser::If_statementCon
   ifLabelsMap[ctx] = labels;
 }
 
+void BytecodeIRGeneratorListener::enterIf_expression(cgullParser::If_expressionContext* ctx) {
+  std::string endIfLabel = generateLabel();
+  std::vector<std::string> branchLabels = {generateLabel()};
+
+  IfLabels labels;
+  labels.endIfLabel = endIfLabel;
+  labels.conditionLabels = branchLabels;
+  ifExpressionLabelsMap[ctx] = labels;
+}
+
 void BytecodeIRGeneratorListener::exitBranch_block(cgullParser::Branch_blockContext* ctx) {
   auto parentCtx = ctx->parent;
   if (!parentCtx)
@@ -1086,4 +1140,30 @@ void BytecodeIRGeneratorListener::enterFor_statement(cgullParser::For_statementC
   labels.conditionLabel = conditionLabel;
   labels.updateLabel = updateLabel;
   forLabelsMap[ctx] = labels;
+}
+
+void BytecodeIRGeneratorListener::handleLogicalExpression(cgullParser::Base_expressionContext* ctx) {
+  bool isAndOp = ctx->AND_OP() != nullptr;
+  bool isOrOp = ctx->OR_OP() != nullptr;
+
+  if (!isAndOp && !isOrOp)
+    return;
+
+  ExpressionLabels labels;
+  labels.fallthroughLabel = generateLabel();
+  labels.exitLabel = generateLabel();
+  labels.isAndOperator = isAndOp;
+  expressionLabelsMap[ctx] = labels;
+
+  // set parent relationship for the operands
+  auto leftExpr = ctx->base_expression(0);
+  auto rightExpr = ctx->base_expression(1);
+
+  if (leftExpr) {
+    parentExpressionMap[leftExpr] = ctx;
+  }
+
+  if (rightExpr) {
+    parentExpressionMap[rightExpr] = ctx;
+  }
 }

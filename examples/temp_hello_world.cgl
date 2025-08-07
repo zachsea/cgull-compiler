@@ -1,50 +1,7 @@
-/* Example #5 - Looping
- * This example showcases looping logic using the for keyword.
- * The while keyword does not exist. Typical (init, cond, update) for loops
- * are shown, as well as while/do-while loops using the for keyword
- * break and continue statements are also shown.
- */
-
 fn main() {
-  // for loop with a range
-  for (int i = 0; i < 3; i++) {
-    println("For loop iteration: " + i);
-  }
-
-  // while loop
-
-  int j = 0;
-  for (j < 3) {
-    println("While loop iteration: " + j);
-    j++;
-  }
-
-  // infinite loop with break statement
-  bool condition = true;
-  for {
-    if (condition) {
-      println("Infinite loop, breaking out...");
-      break; // break statement
-    }
-    println("This will not be printed");
-  }
-
-  string input = "";
-  for {
-    println("This will loop until you say stop: ");
-    input = readline();
-  } until (input == "stop");
-  println("You said stop, exiting loop.");
+  bool a = false || ((true || true) && true);
+  println(a);
+  bool b = false || false || (true && false) || false && (true);
+  println(b);
+  println(if (true && false || (5 > 4) && false) "true" else "false");
 }
-
-/* expected output:
- * For loop iteration: 0
- * For loop iteration: 1
- * For loop iteration: 2
- * "While" loop iteration: 0
- * "While" loop iteration: 1
- * "While" loop iteration: 2
- * Infinite loop, breaking out...
- * This will loop until you say stop: (user input) (repeats until "stop")
- * You said stop, exiting loop.
- */

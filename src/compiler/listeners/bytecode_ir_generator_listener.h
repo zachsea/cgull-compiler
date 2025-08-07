@@ -30,6 +30,12 @@ private:
     std::string conditionLabel;
     std::string updateLabel;
   };
+  struct ExpressionLabels {
+    std::string fallthroughLabel;
+    std::string exitLabel;
+    bool isAndOperator;
+    bool processed = false;
+  };
 
   ErrorReporter& errorReporter;
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes;
@@ -44,10 +50,13 @@ private:
   int labelCounter = 0;
   std::stack<std::string> breakLabels;
   std::unordered_map<cgullParser::If_statementContext*, IfLabels> ifLabelsMap;
+  std::unordered_map<cgullParser::If_expressionContext*, IfLabels> ifExpressionLabelsMap;
   std::unordered_map<cgullParser::Until_statementContext*, SimpleLoopLabels> untilLabelsMap;
   std::unordered_map<cgullParser::While_statementContext*, SimpleLoopLabels> whileLabelsMap;
   std::unordered_map<cgullParser::For_statementContext*, ForLoopLabels> forLabelsMap;
   std::unordered_map<cgullParser::Infinite_loop_statementContext*, SimpleLoopLabels> infiniteLoopLabelsMap;
+  std::unordered_map<cgullParser::Base_expressionContext*, ExpressionLabels> expressionLabelsMap;
+  std::unordered_map<cgullParser::Base_expressionContext*, cgullParser::Base_expressionContext*> parentExpressionMap;
 
   std::shared_ptr<Scope> getCurrentScope(antlr4::ParserRuleContext* ctx) const;
   std::string generateLabel();
@@ -57,6 +66,7 @@ private:
   void generateStringConversion(antlr4::ParserRuleContext* ctx);
   std::string getLoadInstruction(const std::shared_ptr<PrimitiveType>& primitiveType);
   std::string getStoreInstruction(const std::shared_ptr<PrimitiveType>& primitiveType);
+  void handleLogicalExpression(cgullParser::Base_expressionContext* ctx);
 
   virtual void enterProgram(cgullParser::ProgramContext* ctx) override;
   virtual void exitProgram(cgullParser::ProgramContext* ctx) override;
@@ -89,6 +99,8 @@ private:
   virtual void exitPostfix_expression(cgullParser::Postfix_expressionContext* ctx) override;
 
   virtual void enterIf_statement(cgullParser::If_statementContext* ctx) override;
+
+  virtual void enterIf_expression(cgullParser::If_expressionContext* ctx) override;
 
   virtual void enterBranch_block(cgullParser::Branch_blockContext* ctx) override;
   virtual void exitBranch_block(cgullParser::Branch_blockContext* ctx) override;
