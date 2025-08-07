@@ -1,7 +1,23 @@
 fn main() {
-  float a = 1024.0;
-  float b = 102.0 + a--;
+  int a = 20;
+  int b;
+  if (a < 10) {
+    b = 5;
+    println("true");
+  } else if (a < 11) {
+    b = 10;
+    println("true!");
+  } else if (a < 17) {
+    b = 11;
+    println("true!!");
+  } else {
+    println("false");
+    if (a < 21) {
+      b = 13;
+      println("true!!!");
+    } else {
+      b = 14;
+    }
+  }
   println(b);
-  float c = 102.0 + a;
-  println(c);
 }
