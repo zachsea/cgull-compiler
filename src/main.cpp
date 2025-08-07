@@ -135,14 +135,6 @@ int main(int argc, char* argv[]) {
   BytecodeCompiler compiler(tree, semanticAnalyzer.getScopes(), semanticAnalyzer.getExpressionTypes());
   compiler.compile();
 
-  for (const auto& instruction : compiler.getInstructions()) {
-    std::cout << "Instruction: " << instruction.opCode << " Operands: ";
-    for (const auto& operand : instruction.operands) {
-      std::cout << operand << " ";
-    }
-    std::cout << std::endl;
-  }
-
   if (compiler.getErrorReporter().hasErrors()) {
     std::cerr << "Bytecode generation failed with errors." << std::endl;
     compiler.getErrorReporter().displayErrors();

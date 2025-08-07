@@ -1,9 +1,13 @@
 #include "ir_instruction.h"
+#include "../symbols/symbol.h"
 
-IRInstruction::IRInstruction(IROpCode opCode, const std::vector<std::string>& operands)
-    : opCode(opCode), operands(operands) {}
+IRCallInstruction::IRCallInstruction(const std::shared_ptr<FunctionSymbol>& function) : function(function) {}
 
-IRInstruction::IRInstruction(IROpCode opCode, const std::string& operand) : opCode(opCode), operands({operand}) {}
+std::string IRCallInstruction::toString() const {
+  // temp
+  return "call " + function->getMangledName();
+}
 
-IRInstruction::IRInstruction(IROpCode opCode, const std::string& operand1, const std::string& operand2)
-    : opCode(opCode), operands({operand1, operand2}) {}
+IRRawInstruction::IRRawInstruction(const std::string& instruction) : instruction(instruction) {}
+
+std::string IRRawInstruction::toString() const { return instruction; }

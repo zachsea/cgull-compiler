@@ -1,6 +1,7 @@
 #ifndef SYMBOL_H
 #define SYMBOL_H
 
+#include "../instructions/ir_instruction.h"
 #include "type.h"
 #include <memory>
 #include <string>
@@ -47,6 +48,7 @@ public:
   bool isStructMethod = false;
   std::vector<std::shared_ptr<VariableSymbol>> parameters;
   std::vector<std::shared_ptr<Type>> returnTypes;
+  std::vector<std::shared_ptr<IRInstruction>> instructions;
 
   // includes parameter types to avoid name collisions
   std::string getMangledName() const;
