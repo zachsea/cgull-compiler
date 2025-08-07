@@ -1,7 +1,0 @@
-fn main() {
-  bool a = false || ((true || true) && true);
-  println(a);
-  bool b = false || false || (true && false) || false && (true);
-  println(b);
-  println(if (true && false || (5 > 4) && false) "true" else "false");
-}

@@ -410,6 +410,10 @@ std::shared_ptr<Type> SymbolCollectionListener::resolveType(cgullParser::TypeCon
     return nullptr;
   }
 
+  if (typeCtx->array_suffix()) {
+    baseType = std::make_shared<ArrayType>(baseType);
+  }
+
   // handle pointers
   for (auto child : typeCtx->children) {
     if (child->getText() == "*") {

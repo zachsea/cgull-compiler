@@ -1,13 +1,13 @@
-/* Example #1 - Misc 1
+/* Example #2 - Misc 1
  * Due to feature removal, the following is just a random example.
  * Prints a pyramid of stars.
  */
 
-fn main() -> int {
+fn main() {
   int height;
   string input;
 
-  println("Enter the height of the pyramid: ");
+  print("Enter the height of the pyramid: ");
   input = readline();
   height = input as int;
 
@@ -22,10 +22,8 @@ fn main() -> int {
           print("*");
       }
 
-      println("");
+      print("\n");
   }
-
-  return 0;
 }
 
 /* expected output, given the input "5":

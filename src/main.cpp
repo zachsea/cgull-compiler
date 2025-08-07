@@ -9,7 +9,6 @@
 #include <cgullListener.h>
 #include <cgullParser.h>
 #include <cgullVisitor.h>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -145,10 +144,6 @@ int main(int argc, char* argv[]) {
                             semanticAnalyzer.getExpectingStringConversion());
   compiler.compile();
 
-  for (const auto& ctx : semanticAnalyzer.getExpectingStringConversion()) {
-    std::cout << "Expecting string conversion at: " << ctx->toString() << std::endl;
-  }
-
   if (compiler.getErrorReporter().hasErrors()) {
     std::cerr << "Bytecode generation failed with errors." << std::endl;
     compiler.getErrorReporter().displayErrors();
@@ -156,22 +151,8 @@ int main(int argc, char* argv[]) {
   }
   std::cout << "Bytecode generation completed successfully!" << std::endl;
 
-  try {
-    std::filesystem::create_directory("out");
-  } catch (const std::filesystem::filesystem_error& e) {
-    std::cerr << "Failed to create output directory: " << e.what() << std::endl;
-    return 1;
-  }
-
-  // for now, we only have a main class
-  std::ofstream outputFile("out/Main.jasm");
-  if (!outputFile.is_open()) {
-    std::cerr << "Failed to open output file: Main.jasm" << std::endl;
-    return 1;
-  }
-  compiler.generateBytecode(outputFile);
-  outputFile.close();
-  std::cout << "Bytecode written to Main.jasm" << std::endl;
+  compiler.generateBytecode("out");
+  std::cout << "Bytecode written to out directory" << std::endl;
   std::cout << "Compilation completed successfully!" << std::endl;
 
   return 0;

@@ -8,15 +8,6 @@ fn printNodes(Node* head) -> void {
   printNodes(head->next);
 }
 
-fn deallocateList(Node* head) {
-  Node* curr = head;
-  for (curr) {
-    Node* next = curr->next;
-    deallocate curr; // deallocate memory
-    curr = next;
-  }
-}
-
 fn getNeighbors(Node* head, string c) -> (Node*, Node*) {
   Node* prev = nullptr;
   Node* curr = head;
@@ -43,8 +34,6 @@ fn main() -> int {
 
   println("Previous of B: " + (if (prev) prev->value else " "));
   println("Next of B: " + (if (next) next->value else " "));
-
-  deallocateList(head);
 
   return 0;
 }

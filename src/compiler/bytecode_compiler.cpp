@@ -1,5 +1,6 @@
 #include "bytecode_compiler.h"
 #include "listeners/bytecode_ir_generator_listener.h"
+#include "primitive_wrapper_generator.h"
 #include <ostream>
 
 BytecodeCompiler::BytecodeCompiler(
@@ -11,19 +12,56 @@ BytecodeCompiler::BytecodeCompiler(
       expectingStringConversion(expectingStringConversion) {}
 
 void BytecodeCompiler::compile() {
+  // generate wrappers for primitive types as needed
+  for (const auto& [ctx, type] : expressionTypes) {
+    auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
+    if (primitiveType) {
+      if (primitiveType && primitiveType->getPrimitiveKind() != PrimitiveType::PrimitiveKind::VOID) {
+        getOrCreatePrimitiveWrapper(primitiveType->getPrimitiveKind());
+      }
+    }
+  }
+  for (const auto& [kind, wrapper] : primitiveWrappers) {
+    generatedClasses.push_back(wrapper);
+  }
+
   // create a listener to generate the IR
-  BytecodeIRGeneratorListener listener(errorReporter, scopeMap, expressionTypes, expectingStringConversion);
+  BytecodeIRGeneratorListener listener(errorReporter, scopeMap, expressionTypes, expectingStringConversion,
+                                       primitiveWrappers);
   antlr4::tree::ParseTreeWalker walker;
   walker.walk(&listener, programCtx);
 
-  // get the generated classes
-  auto classes = listener.getClasses();
-  generatedClasses = classes;
+  // user defined classes
+  for (const auto& irClass : listener.getClasses()) {
+    generatedClasses.push_back(irClass);
+  }
 }
 
-void BytecodeCompiler::generateBytecode(std::basic_ostream<char>& out) {
+void BytecodeCompiler::generateBytecode(const std::string& outputDir) {
+  // remove existing .jasm and .class files
+  try {
+    std::filesystem::remove_all(outputDir);
+  } catch (const std::exception& e) {
+  }
+  // create output directory if it doesn't exist
+  try {
+    std::filesystem::create_directories(outputDir);
+  } catch (const std::exception& e) {
+    throw std::runtime_error("Failed to create output directory: " + outputDir + " (" + e.what() + ")");
+  }
+
   for (const auto& irClass : generatedClasses) {
-    generateClass(out, irClass);
+    std::string filePath = outputDir + "/" + irClass->name + ".jasm";
+    std::ofstream outFile(filePath);
+
+    if (!outFile.is_open()) {
+      throw std::runtime_error("Failed to open output file: " + filePath);
+    }
+
+    generateClass(outFile, irClass);
+    outFile.close();
+
+    std::cout << "Generated class file: " << filePath << std::endl;
   }
 }
 
@@ -38,6 +76,8 @@ std::string BytecodeCompiler::typeToJVMType(const std::shared_ptr<Type>& type) {
       return "F";
     case PrimitiveType::PrimitiveKind::STRING:
       return "java/lang/String";
+    case PrimitiveType::PrimitiveKind::BOOLEAN:
+      return "Z";
     case PrimitiveType::PrimitiveKind::VOID:
       return "V";
     default:
@@ -49,21 +89,42 @@ std::string BytecodeCompiler::typeToJVMType(const std::shared_ptr<Type>& type) {
 
 void BytecodeCompiler::generateClass(std::basic_ostream<char>& out, const std::shared_ptr<IRClass>& irClass) {
   out << "public class " << irClass->name << " {\n";
+
+  if (irClass->name.find("Reference") != std::string::npos &&
+      (irClass->name == "IntReference" || irClass->name == "FloatReference" || irClass->name == "BoolReference" ||
+       irClass->name == "StringReference")) {
+    std::string fieldType;
+    if (irClass->name == "IntReference")
+      fieldType = "I";
+    else if (irClass->name == "FloatReference")
+      fieldType = "F";
+    else if (irClass->name == "BoolReference")
+      fieldType = "Z";
+    else if (irClass->name == "StringReference")
+      fieldType = "java/lang/String";
+
+    out << "private value " << fieldType << "\n";
+  }
+
   for (const auto& method : irClass->methods) {
     // special case for main
-
-    // function name
     if (method->name == "main") {
       out << "public static main(";
+    } else if (method->name == "<init>") {
+      out << "public <init>(";
     } else {
-      out << "public static " << method->getMangledName() << "(";
+      // static just for the main method, really
+      out << "public " << (method->isStructMethod ? "" : "static ") << method->getMangledName() << "(";
     }
     // function parameters
     if (method->name == "main") {
       out << "[java/lang/String";
     } else {
-      for (const auto& parameter : method->parameters) {
-        out << typeToJVMType(parameter->dataType) << " " << parameter->name << ", ";
+      for (size_t i = 0; i < method->parameters.size(); ++i) {
+        const auto& parameter = method->parameters[i];
+        if (i > 0)
+          out << ", ";
+        out << typeToJVMType(parameter->dataType);
       }
     }
     out << ")";
@@ -102,22 +163,26 @@ void BytecodeCompiler::generateInstruction(std::basic_ostream<char>& out,
 // to be continued in HW5
 void BytecodeCompiler::generateCallInstruction(std::basic_ostream<char>& out,
                                                const std::shared_ptr<IRCallInstruction>& instruction) {
-  if (instruction->function->name == "println") {
+  if (instruction->function->name == "print" || instruction->function->name == "println") {
     // getstatic already added in enterFunction_call
     auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(instruction->function->parameters[0]->dataType);
     if (primitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING) {
-      out << "invokevirtual java/io/PrintStream.println(java/lang/String)V\n";
+      out << "invokevirtual java/io/PrintStream." << instruction->function->name << "(java/lang/String)V\n";
     } else {
       // we need to call its toString first, or for primitives we can piggyback still
     }
     return;
-  } else if (instruction->function->name == "readline") {
+  } else if (instruction->function->name == "readline" || instruction->function->name == "read") {
     // this doesnt take any arguments, so we can just put all the related instructions here
     out << "new java/util/Scanner\n";
     out << "dup\n";
     out << "getstatic java/lang/System.in java/io/InputStream\n";
     out << "invokespecial java/util/Scanner.<init>(java/io/InputStream)V\n";
-    out << "invokevirtual java/util/Scanner.nextLine()java/lang/String\n";
+    if (instruction->function->name == "readline") {
+      out << "invokevirtual java/util/Scanner.nextLine()java/lang/String\n";
+    } else {
+      out << "invokevirtual java/util/Scanner.next()java/lang/String\n";
+    }
     return;
   }
   out << "invokevirtual " << instruction->function->getMangledName() << "(";
@@ -130,4 +195,28 @@ void BytecodeCompiler::generateCallInstruction(std::basic_ostream<char>& out,
     out << typeToJVMType(instruction->function->returnTypes[0]);
   }
   out << "V\n";
+}
+
+std::shared_ptr<IRClass> BytecodeCompiler::getOrCreatePrimitiveWrapper(PrimitiveType::PrimitiveKind kind) {
+  auto it = primitiveWrappers.find(kind);
+  if (it != primitiveWrappers.end()) {
+    return it->second;
+  }
+
+  auto wrapper = PrimitiveWrapperGenerator::generateWrapperClass(kind);
+  primitiveWrappers[kind] = wrapper;
+  return wrapper;
+}
+
+bool BytecodeCompiler::needsPrimitiveWrapper(const std::shared_ptr<Type>& type) {
+  auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
+  if (!pointerType) {
+    return false;
+  }
+
+  auto pointeeType = pointerType->getPointedType();
+  auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(pointeeType);
+
+  // needs wrapper if it's a pointer to a primitive (except void)
+  return primitiveType && primitiveType->getPrimitiveKind() != PrimitiveType::PrimitiveKind::VOID;
 }

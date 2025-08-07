@@ -98,11 +98,7 @@ for (int i = 0; i < 10; i++) {
 int i = 0;
 for (i < 10) {
   println(i);
-  if (i == 5) {
-    i = i + 2;
-    continue;
-  }
-  i++;
+  i = if (i == 5) (i + 2) else (i + 1);
 }
 
 // infinite loop
@@ -174,9 +170,9 @@ Foo f = Foo(1, 2, 3);
 
 ```cgull
 int x = 0;
-// x = 1.0; // error: cannot convert from float to int
-int y = 1.0; // error: cannot convert from float to int
-int z = 1; // ok: implicit conversion from int to float, etc.
+x = 1.0; // error: cannot assign float to int
+int y = 1.0; // error: cannot assign float to int
+int z = 1;
 ```
 
 ### Field Access
@@ -198,7 +194,7 @@ An array is a pointer to the first element, the square brackets operator is equi
 This can be seen in [examples/ex1_dynamic_array.cgl](examples/ex1_dynamic_array.cgl).
 
 ```cgull
-int arr[10];
+int[] arr = allocate int[10];
 arr[0] = 1;
 println(arr[0]); // prints 1
 ```
@@ -267,12 +263,11 @@ No current support for single unicode characters, may be added in the future.
 #### Compound Types
 
 ```cgull
-int* arr = allocate int[2]; // allocate an array of 2 integers on the heap
+int[] arr = allocate int[2]; // allocate an array of 2 integers
 arr[0] = 1;
 arr[1] = 2;
 println(arr[0]); // prints 1
 println(arr[1]); // prints 2
-deallocate[] arr; // free the memory
 ```
 
 ##### Tuples
@@ -282,7 +277,7 @@ See [Composite/User-Defined Types](#compositeuser-defined-types) for tuples.
 ### Literals
 
 - Signed integers: `0`, `1`, `-1`
-- Floating point numbers: `0.0`, `1.42`, `-1.42`, `+inf`, `-inf`, `nan`
+- Floating point numbers: `0.0`, `1.42`, `-1.42`
 - Binary: `0b0`, `0b1`, `0b101010`, `0b1111_1111`
 - Octal: `0o0`, `0o1`, `0o10`, `0o777` (note: no leading zeroes)
 - Hexadecimal: `0x0`, `0x1`, `0x10`, `0xFF` (note: no leading zeroes)
@@ -302,17 +297,16 @@ All types have a `$toString` method that returns a string representation of the 
 
 ### References/Heap
 
-There are no syntatic sugar references like C++, it takes the C approach of using only pointers. The `&` operator is used to get the address of a variable, and the `*` operator is used to dereference a pointer.
+Since the switch to the JVM, pointers are just syntactic sugar for references. (wraps the value in a dynamically generated class with a getter and setter). This means theres no more need to deallocate since garbage collection is handled by the JVM.
 
 ```cgull
 int x = 0;
-int* p = &x; // p is a pointer to x
+int* p = &x; // p is a "pointer" to x
 *p = 1; // x is now 1
 ```
 
-Use "allocate" to allocate memory on the heap. The `deallocate` function is used to free memory.
+Use "allocate" to allocate memory on the heap.
 
 ```cgull
-int* p = allocate int[10]; // allocate an array of 10 integers on the heap
-deallocate[] p; // free the memory
+int[] arr = allocate int[10]; // allocate an array of 10 integers on the heap
 ```

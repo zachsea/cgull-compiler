@@ -5,11 +5,13 @@
 #include <string>
 #include <vector>
 
+class IRClass;
+
 class TypeSymbol;
 
 class Type {
 public:
-  enum class TypeKind { PRIMITIVE, USER_DEFINED, TUPLE, POINTER, UNRESOLVED };
+  enum class TypeKind { PRIMITIVE, USER_DEFINED, ARRAY, TUPLE, POINTER, UNRESOLVED };
 
   Type(TypeKind kind);
   virtual ~Type() = default;
@@ -40,6 +42,7 @@ public:
 
 private:
   PrimitiveKind primitiveKind;
+  const std::shared_ptr<IRClass> wrapperClass;
 };
 
 class UserDefinedType : public Type {
@@ -51,6 +54,17 @@ public:
 
 private:
   std::shared_ptr<TypeSymbol> typeSymbol;
+};
+
+class ArrayType : public Type {
+public:
+  ArrayType(std::shared_ptr<Type> elementType);
+  std::shared_ptr<Type> getElementType() const;
+  std::string toString() const override;
+  bool equals(const std::shared_ptr<Type>& other) const override;
+
+private:
+  std::shared_ptr<Type> elementType;
 };
 
 class TupleType : public Type {

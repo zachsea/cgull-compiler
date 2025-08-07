@@ -11,6 +11,8 @@ struct IRClass {
   std::string name;
   std::vector<std::shared_ptr<IRInstruction>> instructions;
   std::vector<std::shared_ptr<FunctionSymbol>> methods;
+
+  std::shared_ptr<FunctionSymbol> getMethod(const std::string& name);
 };
 
 #endif // IR_CLASS_H

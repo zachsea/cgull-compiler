@@ -71,6 +71,21 @@ bool UserDefinedType::equals(const std::shared_ptr<Type>& other) const {
 
 std::string UserDefinedType::toString() const { return typeSymbol ? typeSymbol->name : "unknown"; }
 
+ArrayType::ArrayType(std::shared_ptr<Type> elementType) : Type(TypeKind::ARRAY), elementType(elementType) {}
+
+std::shared_ptr<Type> ArrayType::getElementType() const { return elementType; }
+
+bool ArrayType::equals(const std::shared_ptr<Type>& other) const {
+  if (other->getKind() != TypeKind::ARRAY) {
+    return false;
+  }
+
+  auto otherArray = std::dynamic_pointer_cast<ArrayType>(other);
+  return elementType->equals(otherArray->elementType);
+}
+
+std::string ArrayType::toString() const { return elementType->toString() + "[]"; }
+
 TupleType::TupleType(const std::vector<std::shared_ptr<Type>>& elementTypes)
     : Type(TypeKind::TUPLE), elementTypes(elementTypes) {}
 

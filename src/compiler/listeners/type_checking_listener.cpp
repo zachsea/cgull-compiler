@@ -141,7 +141,7 @@ std::shared_ptr<Type> TypeCheckingListener::resolveType(cgullParser::TypeContext
   }
 
   if (typeCtx->array_suffix()) {
-    baseType = std::make_shared<PointerType>(baseType);
+    baseType = std::make_shared<ArrayType>(baseType);
   }
 
   for (auto child : typeCtx->children) {
@@ -247,12 +247,6 @@ bool TypeCheckingListener::areTypesCompatible(const std::shared_ptr<Type>& sourc
     sourcePointedType->equals(targetPointedType);
   }
 
-  // numerics can convert to each other
-  auto sourcePrimitive = std::dynamic_pointer_cast<PrimitiveType>(sourceType);
-  if (sourcePrimitive && targetPrimitive) {
-    return sourcePrimitive->isNumeric() && targetPrimitive->isNumeric();
-  }
-
   return false;
 }
 
@@ -287,6 +281,10 @@ std::shared_ptr<Type> TypeCheckingListener::getFieldType(const std::shared_ptr<T
     if (index >= 0 && index < tupleType->getElementTypes().size()) {
       return tupleType->getElementTypes()[index];
     }
+  }
+
+  if (auto arrayType = std::dynamic_pointer_cast<ArrayType>(baseType)) {
+    return arrayType->getElementType();
   }
 
   return nullptr;
@@ -463,11 +461,9 @@ void TypeCheckingListener::exitVariable(cgullParser::VariableContext* ctx) {
 void TypeCheckingListener::exitLiteral(cgullParser::LiteralContext* ctx) {
   std::shared_ptr<Type> literalType;
 
-  // this needs to be changed to allow the hex/bin literals to be of any numeric type
   if (ctx->NUMBER_LITERAL() || ctx->HEX_LITERAL() || ctx->BINARY_LITERAL()) {
     literalType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::INT);
-  } else if (ctx->FLOAT_POSINF_LITERAL() || ctx->FLOAT_NEGINF_LITERAL() || ctx->FLOAT_NAN_LITERAL() ||
-             ctx->DECIMAL_LITERAL()) {
+  } else if (ctx->DECIMAL_LITERAL()) {
     literalType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::FLOAT);
   } else if (ctx->STRING_LITERAL()) {
     literalType = std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::STRING);
@@ -671,6 +667,11 @@ void TypeCheckingListener::exitIndex_expression(cgullParser::Index_expressionCon
       return;
     }
     setExpressionType(ctx, tupleType->getElementTypes()[index]);
+    return;
+  }
+
+  if (auto arrayType = std::dynamic_pointer_cast<ArrayType>(baseType)) {
+    setExpressionType(ctx, arrayType->getElementType());
     return;
   }
 
@@ -886,17 +887,6 @@ void TypeCheckingListener::exitCast_expression(cgullParser::Cast_expressionConte
     return;
   }
 
-  if (ctx->BITS_AS_CAST()) {
-    auto sourcePrim = std::dynamic_pointer_cast<PrimitiveType>(sourceType);
-    auto targetPrim = std::dynamic_pointer_cast<PrimitiveType>(targetType);
-
-    if (!sourcePrim || !targetPrim) {
-      errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
-                                ctx->getStart()->getCharPositionInLine(),
-                                "bits_as_cast can only be used between primitive types");
-    }
-  }
-
   setExpressionType(ctx, targetType);
 }
 
@@ -938,26 +928,6 @@ void TypeCheckingListener::exitDereference_expression(cgullParser::Dereference_e
   setExpressionType(ctx, pointerType->getPointedType());
 }
 
-void TypeCheckingListener::exitReference_expression(cgullParser::Reference_expressionContext* ctx) {
-  if (!ctx->expression()) {
-    errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
-                              ctx->getStart()->getCharPositionInLine(), "Cannot determine base type for reference");
-  }
-  auto baseType = getExpressionType(ctx->expression());
-  if (!baseType) {
-    errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
-                              ctx->getStart()->getCharPositionInLine(), "Cannot determine base type for reference");
-    setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
-    return;
-  }
-  auto pointerType = std::dynamic_pointer_cast<PointerType>(baseType);
-  if (pointerType) {
-    setExpressionType(ctx, pointerType);
-  } else {
-    setExpressionType(ctx, std::make_shared<PointerType>(baseType));
-  }
-}
-
 void TypeCheckingListener::exitTuple_expression(cgullParser::Tuple_expressionContext* ctx) {
   if (!ctx->expression_list()) {
     setExpressionType(ctx, std::make_shared<TupleType>(std::vector<std::shared_ptr<Type>>{}));
@@ -979,6 +949,30 @@ void TypeCheckingListener::exitTuple_expression(cgullParser::Tuple_expressionCon
   setExpressionType(ctx, std::make_shared<TupleType>(elementTypes));
 }
 
+void TypeCheckingListener::exitArray_expression(cgullParser::Array_expressionContext* ctx) {
+  if (ctx->expression_list()) {
+    auto elementType = getExpressionType(ctx->expression_list()->expression()[0]);
+    if (!elementType) {
+      errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
+                                ctx->getStart()->getCharPositionInLine(), "Cannot determine type for array element");
+    }
+  }
+  // check if all elements are of the same type
+  auto elementType = getExpressionType(ctx->expression_list()->expression()[0]);
+  for (auto expr : ctx->expression_list()->expression()) {
+    auto elemType = getExpressionType(expr);
+    if (!elemType) {
+      errorReporter.reportError(ErrorType::TYPE_MISMATCH, expr->getStart()->getLine(),
+                                expr->getStart()->getCharPositionInLine(), "Cannot determine type for array element");
+    }
+    if (!areTypesCompatible(elemType, elementType, expr, ctx)) {
+      errorReporter.reportError(ErrorType::TYPE_MISMATCH, expr->getStart()->getLine(),
+                                expr->getStart()->getCharPositionInLine(), "Array element type mismatch");
+    }
+  }
+  setExpressionType(ctx, std::make_shared<ArrayType>(elementType));
+}
+
 void TypeCheckingListener::exitBase_expression(cgullParser::Base_expressionContext* ctx) {
   if (ctx->expression()) {
     setExpressionType(ctx, getExpressionType(ctx->expression()));
@@ -992,12 +986,12 @@ void TypeCheckingListener::exitBase_expression(cgullParser::Base_expressionConte
     setExpressionType(ctx, getExpressionType(ctx->index_expression()));
   } else if (ctx->dereference_expression()) {
     setExpressionType(ctx, getExpressionType(ctx->dereference_expression()));
-  } else if (ctx->reference_expression()) {
-    setExpressionType(ctx, getExpressionType(ctx->reference_expression()));
   } else if (ctx->cast_expression()) {
     setExpressionType(ctx, getExpressionType(ctx->cast_expression()));
   } else if (ctx->tuple_expression()) {
     setExpressionType(ctx, getExpressionType(ctx->tuple_expression()));
+  } else if (ctx->array_expression()) {
+    setExpressionType(ctx, getExpressionType(ctx->array_expression()));
   } else if (ctx->unary_expression()) {
     setExpressionType(ctx, getExpressionType(ctx->unary_expression()));
   } else if (ctx->allocate_expression()) {
@@ -1033,7 +1027,6 @@ void TypeCheckingListener::exitBase_expression(cgullParser::Base_expressionConte
         }
 
         if (leftCanConvert || rightCanConvert) {
-          std::cout << "String concatenation: " << left->toString() << " + " << right->toString() << std::endl;
           // if either operand is a string, check if the other can be converted
           if (leftCanConvert && !rightCanConvert) {
             rightCanConvert = canConvertToString(right);
@@ -1135,13 +1128,29 @@ void TypeCheckingListener::exitAllocate_primitive(cgullParser::Allocate_primitiv
 }
 
 void TypeCheckingListener::exitAllocate_array(cgullParser::Allocate_arrayContext* ctx) {
-  if (ctx->type()) {
-    auto baseType = resolveType(ctx->type());
-    if (baseType) {
-      setExpressionType(ctx, std::make_shared<PointerType>(baseType));
-    } else {
+  auto baseType = resolveType(ctx->type());
+  if (baseType) {
+    setExpressionType(ctx, baseType);
+  } else {
+    errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
+                              ctx->getStart()->getCharPositionInLine(), "Invalid type in array allocation");
+    setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+  }
+  if (ctx->expression()) {
+    // ensure integer size
+    setExpressionType(ctx, std::make_shared<ArrayType>(baseType));
+    auto size = getExpressionType(ctx->expression());
+    if (!size || !std::dynamic_pointer_cast<PrimitiveType>(size)->isInteger()) {
       errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
-                                ctx->getStart()->getCharPositionInLine(), "Invalid type in array allocation");
+                                ctx->getStart()->getCharPositionInLine(), "Array size must be an integer");
+      setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+    }
+  } else if (ctx->array_expression()) {
+    // ensure matches base type
+    auto arrayType = getExpressionType(ctx->array_expression());
+    if (!arrayType || !areTypesCompatible(arrayType, baseType, ctx->array_expression(), ctx)) {
+      errorReporter.reportError(ErrorType::TYPE_MISMATCH, ctx->getStart()->getLine(),
+                                ctx->getStart()->getCharPositionInLine(), "Array type mismatch");
       setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
     }
   }
@@ -1310,6 +1319,14 @@ void TypeCheckingListener::exitPostfix_expression(cgullParser::Postfix_expressio
   }
 
   setExpressionType(ctx, baseType);
+}
+
+void TypeCheckingListener::exitUnary_statement(cgullParser::Unary_statementContext* ctx) {
+  if (ctx->unary_expression()) {
+    setExpressionType(ctx, getExpressionType(ctx->unary_expression()));
+  } else {
+    setExpressionType(ctx, std::make_shared<PrimitiveType>(PrimitiveType::PrimitiveKind::VOID));
+  }
 }
 
 void TypeCheckingListener::exitIf_expression(cgullParser::If_expressionContext* ctx) {

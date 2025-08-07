@@ -5,7 +5,7 @@
  * break and continue statements are also shown.
  */
 
-fn main() -> int {
+fn main() {
   // for loop with a range
   for (int i = 0; i < 3; i++) {
     println("For loop iteration: " + i);
@@ -31,7 +31,7 @@ fn main() -> int {
 
   string input = "";
   for {
-    println("This will loop until you say stop: ");
+    print("This will loop until you say stop: ");
     input = readline();
   } until (input == "stop");
   println("You said stop, exiting loop.");

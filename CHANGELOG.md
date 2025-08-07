@@ -5,6 +5,7 @@
 ### Added
 
 - Compiler backend targeting Java bytecode via JASM (low level bytecode assembler)
+- Dynamically generated wrapper classes to emulate pointer types (multi-class compiling)
 - All requirements for HW4
   - Local variable declaration and assignment
   - Mathematical, logical, and comparison operations
@@ -16,9 +17,14 @@
 
 Due to some introduced overhead due to limitations with JVM instructions, I decided to remove some datatypes and features for the sake of time:
 
-- Signed/unsigned keywords
-- Shorts
-- Chars
+- Signed/unsigned keywords, shorts, chars, longs
+- deallocate/$destruct (no longer needed due to garbage collection)
+- bits as (doesn't mesh well with JVM)
+
+### Changed
+
+- ArrayType added over pointers (meshes better with JVM)
+- Examples updated to reflect modifications
 
 ## [HW3]
 

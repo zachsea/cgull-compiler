@@ -1,11 +1,15 @@
 #include "bytecode_ir_generator_listener.h"
+#include "../bytecode_compiler.h"
+#include "../primitive_wrapper_generator.h"
+#include "type_checking_listener.h"
 
 BytecodeIRGeneratorListener::BytecodeIRGeneratorListener(
     ErrorReporter& errorReporter, std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes,
     std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>>& expressionTypes,
-    std::unordered_set<antlr4::ParserRuleContext*>& expectingStringConversion)
+    std::unordered_set<antlr4::ParserRuleContext*>& expectingStringConversion,
+    std::unordered_map<PrimitiveType::PrimitiveKind, std::shared_ptr<IRClass>>& primitiveWrappers)
     : errorReporter(errorReporter), scopes(scopes), expressionTypes(expressionTypes),
-      expectingStringConversion(expectingStringConversion) {}
+      expectingStringConversion(expectingStringConversion), primitiveWrappers(primitiveWrappers) {}
 
 std::shared_ptr<Scope> BytecodeIRGeneratorListener::getCurrentScope(antlr4::ParserRuleContext* ctx) const {
   auto it = scopes.find(ctx);
@@ -45,7 +49,13 @@ void BytecodeIRGeneratorListener::generateStringConversion(antlr4::ParserRuleCon
     // get the type of the expression
     auto type = expressionTypes[ctx];
     auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
-    if (primitiveType) {
+    auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
+
+    if (pointerType) {
+      auto rawInstruction =
+          std::make_shared<IRRawInstruction>("invokevirtual java/lang/Object.toString ()java/lang/String");
+      currentFunction->instructions.push_back(rawInstruction);
+    } else if (primitiveType) {
       switch (primitiveType->getPrimitiveKind()) {
       case PrimitiveType::PrimitiveKind::INT: {
         // convert int to string
@@ -123,8 +133,8 @@ void BytecodeIRGeneratorListener::enterFunction_call(cgullParser::Function_callC
   if (scope) {
     auto functionSymbol = scope->resolve(ctx->IDENTIFIER()->getText());
     auto calledFunction = std::dynamic_pointer_cast<FunctionSymbol>(functionSymbol);
-    if (calledFunction->name == "println") {
-      // special case for println, we need to add a raw instruction
+    if (calledFunction->name == "print" || calledFunction->name == "println") {
+      // special case for print/println, we need to add a raw instruction
       auto rawInstruction = std::make_shared<IRRawInstruction>("getstatic java/lang/System.out java/io/PrintStream");
       currentFunction->instructions.push_back(rawInstruction);
     }
@@ -161,7 +171,6 @@ void BytecodeIRGeneratorListener::enterExpression(cgullParser::ExpressionContext
     if (it != forLabelsMap.end()) {
       auto& labels = it->second;
       // place label for the condition
-      std::cout << "condition label: " << labels.conditionLabel << std::endl;
       auto labelInst = std::make_shared<IRRawInstruction>(labels.conditionLabel + ":");
       currentFunction->instructions.push_back(labelInst);
     }
@@ -248,7 +257,6 @@ void BytecodeIRGeneratorListener::exitExpression(cgullParser::ExpressionContext*
   if (forStmt && forStmt->expression(0) == ctx) {
     auto it = forLabelsMap.find(forStmt);
     if (it != forLabelsMap.end()) {
-      std::cout << "forStmt: " << forStmt->expression(0)->getText() << std::endl;
       auto& labels = it->second;
       // jump to the end of the loop if false, this is the condition, otherwise jump to the branch block
       auto jumpInst = std::make_shared<IRRawInstruction>("ifeq " + labels.endLabel);
@@ -287,6 +295,8 @@ void BytecodeIRGeneratorListener::enterBase_expression(cgullParser::Base_express
     auto literal = ctx->literal();
     auto type = expressionTypes[literal];
     auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
+    auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
+
     if (primitiveType) {
       PrimitiveType::PrimitiveKind primitiveKind = primitiveType->getPrimitiveKind();
       switch (primitiveKind) {
@@ -300,7 +310,26 @@ void BytecodeIRGeneratorListener::enterBase_expression(cgullParser::Base_express
         }
         break;
       }
-      case PrimitiveType::PrimitiveKind::INT:
+      case PrimitiveType::PrimitiveKind::INT: {
+        // handle NUMBER_LITERAL, HEX_LITERAL, BINARY_LITERAL
+        std::string literalText = literal->getText();
+        if (ctx->literal()->HEX_LITERAL()) {
+          // convert hex literal to int
+          std::stringstream ss;
+          ss << std::hex << literalText;
+          int value;
+          ss >> value;
+          literalText = std::to_string(value);
+        } else if (ctx->literal()->BINARY_LITERAL()) {
+          // cut off the 0b prefix
+          literalText = literalText.substr(2);
+          int value = std::stoi(literalText, nullptr, 2);
+          literalText = std::to_string(value);
+        }
+        auto rawInstruction = std::make_shared<IRRawInstruction>("ldc " + literalText);
+        currentFunction->instructions.push_back(rawInstruction);
+        break;
+      }
       case PrimitiveType::PrimitiveKind::FLOAT:
       case PrimitiveType::PrimitiveKind::STRING: {
         auto rawInstruction = std::make_shared<IRRawInstruction>("ldc " + literal->getText());
@@ -309,6 +338,14 @@ void BytecodeIRGeneratorListener::enterBase_expression(cgullParser::Base_express
       }
       default:
         throw std::runtime_error("Unsupported literal type: " + primitiveType->toString());
+      }
+    } else if (pointerType) {
+      // handle pointer types
+      if (literal->getText() == "nullptr") {
+        auto rawInstruction = std::make_shared<IRRawInstruction>("aconst_null");
+        currentFunction->instructions.push_back(rawInstruction);
+      } else {
+        throw std::runtime_error("Unsupported literal type: " + type->toString());
       }
     } else {
       throw std::runtime_error("Unsupported literal type: " + type->toString());
@@ -320,6 +357,9 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
   // handle binary operations after both operands have been processed
   auto type = expressionTypes[ctx];
   auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
+  if (!primitiveType) {
+    return;
+  }
   if (primitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING) {
     if (ctx->PLUS_OP()) {
       auto rawInstruction = std::make_shared<IRRawInstruction>(
@@ -343,7 +383,6 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
       prefix = "i";
       break;
     default:
-      std::cout << "Expression text: " << ctx->getText() << std::endl;
       throw std::runtime_error("Unsupported primitive type for binary operation: " + primitiveType->toString());
     }
 
@@ -429,26 +468,52 @@ void BytecodeIRGeneratorListener::exitBase_expression(cgullParser::Base_expressi
         }
         return;
       }
-
-      if (ctx->EQUAL_OP()) {
-        auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmpeq " + trueLabel);
-        currentFunction->instructions.push_back(rawInstruction);
-      } else if (ctx->NOT_EQUAL_OP()) {
-        auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmpne " + trueLabel);
-        currentFunction->instructions.push_back(rawInstruction);
-      } else if (ctx->LESS_OP()) {
-        auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmplt " + trueLabel);
-        currentFunction->instructions.push_back(rawInstruction);
-      } else if (ctx->GREATER_OP()) {
-        auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmpgt " + trueLabel);
-        currentFunction->instructions.push_back(rawInstruction);
-      } else if (ctx->LESS_EQUAL_OP()) {
-        auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmple " + trueLabel);
-        currentFunction->instructions.push_back(rawInstruction);
-      } else if (ctx->GREATER_EQUAL_OP()) {
-        auto rawInstruction = std::make_shared<IRRawInstruction>("if_" + prefix + "cmpge " + trueLabel);
-        currentFunction->instructions.push_back(rawInstruction);
+      if (leftPrimitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::INT) {
+        if (ctx->EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmpeq " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->NOT_EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmpne " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->LESS_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmplt " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->GREATER_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmpgt " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->LESS_EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmple " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->GREATER_EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("if_icmpge " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        }
+      } else if (leftPrimitiveType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::FLOAT) {
+        auto rawCmpInstruction = std::make_shared<IRRawInstruction>("fcmpg");
+        currentFunction->instructions.push_back(rawCmpInstruction);
+        if (ctx->EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("ifeq " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->NOT_EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("ifne " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->LESS_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("iflt " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->GREATER_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("ifgt " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->LESS_EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("ifle " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        } else if (ctx->GREATER_EQUAL_OP()) {
+          auto rawInstruction = std::make_shared<IRRawInstruction>("ifge " + trueLabel);
+          currentFunction->instructions.push_back(rawInstruction);
+        }
+      } else {
+        throw std::runtime_error("Unsupported comparison operation for type: " + leftPrimitiveType->toString());
       }
+
       // we didn't jump to trueLabel, so the condition is false
       auto pushFalseInstruction = std::make_shared<IRRawInstruction>("iconst 0");
       currentFunction->instructions.push_back(pushFalseInstruction);
@@ -645,6 +710,11 @@ void BytecodeIRGeneratorListener::exitVariable_declaration(cgullParser::Variable
         auto storeInst = std::make_shared<IRRawInstruction>(storeInstruction);
         currentFunction->instructions.push_back(storeInst);
       }
+      auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
+      if (pointerType) {
+        auto storeInstruction = std::make_shared<IRRawInstruction>("astore " + std::to_string(varSymbol->localIndex));
+        currentFunction->instructions.push_back(storeInstruction);
+      }
     }
   }
 }
@@ -659,6 +729,12 @@ void BytecodeIRGeneratorListener::exitVariable(cgullParser::VariableContext* ctx
     if (varSymbol) {
       auto type = varSymbol->dataType;
       auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
+      auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
+
+      if (pointerType) {
+        auto loadInstruction = std::make_shared<IRRawInstruction>("aload " + std::to_string(varSymbol->localIndex));
+        currentFunction->instructions.push_back(loadInstruction);
+      }
 
       if (primitiveType) {
         // load value from the local variable onto the stack
@@ -671,7 +747,21 @@ void BytecodeIRGeneratorListener::exitVariable(cgullParser::VariableContext* ctx
 }
 
 void BytecodeIRGeneratorListener::exitAssignment_statement(cgullParser::Assignment_statementContext* ctx) {
-  if (ctx->variable() && ctx->expression()) {
+  if (ctx->dereference_expression()) {
+    auto scope = getCurrentScope(ctx);
+    auto expression = ctx->expression();
+    auto expressionType = expressionTypes[expression];
+    auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(expressionType);
+    if (!primitiveType) {
+      throw std::runtime_error("Unsupported assignment type: " + expressionType->toString());
+    }
+    auto wrapperClass = PrimitiveWrapperGenerator::generateWrapperClass(primitiveType->getPrimitiveKind());
+    auto method = wrapperClass->getMethod("setValue");
+    auto invokeInst =
+        std::make_shared<IRRawInstruction>("invokevirtual " + wrapperClass->name + "." + method->getMangledName() +
+                                           "(" + BytecodeCompiler::typeToJVMType(expressionType) + ")V");
+    currentFunction->instructions.push_back(invokeInst);
+  } else if (ctx->variable() && ctx->expression()) {
     auto scope = getCurrentScope(ctx);
     auto variable = ctx->variable();
 
@@ -682,6 +772,12 @@ void BytecodeIRGeneratorListener::exitAssignment_statement(cgullParser::Assignme
       if (varSymbol) {
         auto type = varSymbol->dataType;
         auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(type);
+        auto pointerType = std::dynamic_pointer_cast<PointerType>(type);
+
+        if (pointerType) {
+          auto storeInstruction = std::make_shared<IRRawInstruction>("astore " + std::to_string(varSymbol->localIndex));
+          currentFunction->instructions.push_back(storeInstruction);
+        }
 
         if (primitiveType) {
           // expression result is already on the stack, store it in the variable
@@ -787,25 +883,28 @@ void BytecodeIRGeneratorListener::exitUnary_expression(cgullParser::Unary_expres
       } else {
         throw std::runtime_error("Unsupported unary expression type: " + expressionType->toString());
       }
-    } else if (ctx->INCREMENT_OP()) {
-      if (typeKind == PrimitiveType::PrimitiveKind::INT) {
-        auto rawInstructionIncrement = std::make_shared<IRRawInstruction>("iinc");
-        currentFunction->instructions.push_back(rawInstructionIncrement);
-      } else {
-        throw std::runtime_error("Unsupported unary expression type: " + expressionType->toString());
-      }
-    } else if (ctx->DECREMENT_OP()) {
-      // there are no decrement instructions, so just subtract 1 normally
-      if (typeKind == PrimitiveType::PrimitiveKind::INT) {
-        auto rawInstructionSubtract = std::make_shared<IRRawInstruction>("iconst 1");
-        currentFunction->instructions.push_back(rawInstructionSubtract);
-        auto rawInstructionSubtract2 = std::make_shared<IRRawInstruction>("isub");
-        currentFunction->instructions.push_back(rawInstructionSubtract2);
-      } else if (typeKind == PrimitiveType::PrimitiveKind::FLOAT) {
-        auto rawInstructionSubtract = std::make_shared<IRRawInstruction>("fconst 1");
-        currentFunction->instructions.push_back(rawInstructionSubtract);
-        auto rawInstructionSubtract2 = std::make_shared<IRRawInstruction>("fsub");
-        currentFunction->instructions.push_back(rawInstructionSubtract2);
+    } else if (ctx->INCREMENT_OP() || ctx->DECREMENT_OP()) {
+      if (typeKind == PrimitiveType::PrimitiveKind::INT || typeKind == PrimitiveType::PrimitiveKind::FLOAT) {
+        std::string prefix = typeKind == PrimitiveType::PrimitiveKind::INT ? "i" : "f";
+        auto rawInstructionPushOne = std::make_shared<IRRawInstruction>(prefix + "const 1");
+        currentFunction->instructions.push_back(rawInstructionPushOne);
+        if (ctx->INCREMENT_OP()) {
+          auto rawInstructionAdd = std::make_shared<IRRawInstruction>(prefix + "add");
+          currentFunction->instructions.push_back(rawInstructionAdd);
+        } else if (ctx->DECREMENT_OP()) {
+          auto rawInstructionSubtract = std::make_shared<IRRawInstruction>(prefix + "sub");
+          currentFunction->instructions.push_back(rawInstructionSubtract);
+        }
+        // store the result back in the variable (duplicate the value on the stack)
+        auto rawInstructionDup = std::make_shared<IRRawInstruction>("dup");
+        currentFunction->instructions.push_back(rawInstructionDup);
+        auto scope = getCurrentScope(ctx);
+        // kinda janky, but type checking should guarantee this is an identifier for now...
+        std::string identifier = ctx->expression()->getText();
+        auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(scope->resolve(identifier));
+        auto rawInstructionStore = std::make_shared<IRRawInstruction>(getStoreInstruction(primitiveType) + " " +
+                                                                      std::to_string(varSymbol->localIndex));
+        currentFunction->instructions.push_back(rawInstructionStore);
       } else {
         throw std::runtime_error("Unsupported unary expression type: " + expressionType->toString());
       }
@@ -1165,5 +1264,201 @@ void BytecodeIRGeneratorListener::handleLogicalExpression(cgullParser::Base_expr
 
   if (rightExpr) {
     parentExpressionMap[rightExpr] = ctx;
+  }
+}
+
+void BytecodeIRGeneratorListener::exitCast_expression(cgullParser::Cast_expressionContext* ctx) {
+  auto castType = std::dynamic_pointer_cast<PrimitiveType>(
+      TypeCheckingListener::resolvePrimitiveType(ctx->primitive_type()->getText()));
+  std::shared_ptr<Type> currentType;
+
+  // if its an expression, it will already be resolved on the stack
+  // if its an identifier, we need to load the value from the variable
+  if (ctx->IDENTIFIER()) {
+    // load the value from the variable
+    auto scope = getCurrentScope(ctx);
+    auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(scope->resolve(ctx->IDENTIFIER()->getText()));
+    currentType = varSymbol->dataType;
+    if (auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(currentType)) {
+      auto loadInst = std::make_shared<IRRawInstruction>(getLoadInstruction(primitiveType) + " " +
+                                                         std::to_string(varSymbol->localIndex));
+      currentFunction->instructions.push_back(loadInst);
+    } else {
+      // handle pointer type
+      auto loadInst = std::make_shared<IRRawInstruction>("aload " + std::to_string(varSymbol->localIndex));
+      currentFunction->instructions.push_back(loadInst);
+    }
+  } else {
+    currentType = expressionTypes[ctx->expression()];
+  }
+
+  // pointer to int conversion
+  if (auto pointerType = std::dynamic_pointer_cast<PointerType>(currentType)) {
+    if (castType && castType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::INT) {
+      auto rawInstruction =
+          std::make_shared<IRRawInstruction>("invokestatic java/lang/System.identityHashCode(java/lang/Object)I");
+      currentFunction->instructions.push_back(rawInstruction);
+      return;
+    }
+  }
+
+  // primitive conversions
+  if (auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(currentType)) {
+    convertPrimitiveToPrimitive(primitiveType, castType);
+  } else {
+    throw std::runtime_error("Unsupported cast from " + currentType->toString() + " to " + castType->toString());
+  }
+}
+
+void BytecodeIRGeneratorListener::convertPrimitiveToPrimitive(const std::shared_ptr<PrimitiveType>& fromType,
+                                                              const std::shared_ptr<PrimitiveType>& toType) {
+  if (fromType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::INT ||
+      fromType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::BOOLEAN) {
+    switch (toType->getPrimitiveKind()) {
+    case PrimitiveType::PrimitiveKind::FLOAT: {
+      auto rawInstruction = std::make_shared<IRRawInstruction>("i2f");
+      currentFunction->instructions.push_back(rawInstruction);
+      break;
+    }
+    case PrimitiveType::PrimitiveKind::STRING: {
+      auto rawInstruction =
+          std::make_shared<IRRawInstruction>("invokestatic java/lang/Integer.toString (I)java/lang/String");
+      currentFunction->instructions.push_back(rawInstruction);
+      break;
+    }
+    case PrimitiveType::PrimitiveKind::INT:
+    case PrimitiveType::PrimitiveKind::BOOLEAN:
+      // string conversion is already handled elsewhere
+      // booleans are the same as ints in jvm
+      break;
+    default:
+      throw std::runtime_error("Unsupported conversion from int to " + toType->toString());
+    }
+  } else if (fromType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::FLOAT) {
+    switch (toType->getPrimitiveKind()) {
+    case PrimitiveType::PrimitiveKind::BOOLEAN:
+    case PrimitiveType::PrimitiveKind::INT: {
+      auto rawInstruction = std::make_shared<IRRawInstruction>("f2i");
+      currentFunction->instructions.push_back(rawInstruction);
+      break;
+    }
+    case PrimitiveType::PrimitiveKind::STRING: {
+      auto rawInstruction =
+          std::make_shared<IRRawInstruction>("invokestatic java/lang/Float.toString (F)java/lang/String");
+      currentFunction->instructions.push_back(rawInstruction);
+      break;
+    }
+    case PrimitiveType::PrimitiveKind::FLOAT:
+      break;
+    default:
+      throw std::runtime_error("Unsupported conversion from float to " + toType->toString());
+    }
+  } else if (fromType->getPrimitiveKind() == PrimitiveType::PrimitiveKind::STRING) {
+    switch (toType->getPrimitiveKind()) {
+    case PrimitiveType::PrimitiveKind::INT: {
+      // call Int.parseInt
+      auto rawInstruction =
+          std::make_shared<IRRawInstruction>("invokestatic java/lang/Integer.parseInt (java/lang/String)I");
+      currentFunction->instructions.push_back(rawInstruction);
+      break;
+    }
+    case PrimitiveType::PrimitiveKind::FLOAT: {
+      // call Float.parseFloat
+      auto rawInstruction =
+          std::make_shared<IRRawInstruction>("invokestatic java/lang/Float.parseFloat (java/lang/String)F");
+      currentFunction->instructions.push_back(rawInstruction);
+      break;
+    }
+    case PrimitiveType::PrimitiveKind::BOOLEAN: {
+      // call Boolean.parseBoolean
+      auto rawInstruction =
+          std::make_shared<IRRawInstruction>("invokestatic java/lang/Boolean.parseBoolean (java/lang/String)Z");
+      currentFunction->instructions.push_back(rawInstruction);
+      break;
+    }
+    case PrimitiveType::PrimitiveKind::STRING:
+      break;
+    default:
+      throw std::runtime_error("Unsupported conversion from string to " + toType->toString());
+    }
+  }
+}
+
+void BytecodeIRGeneratorListener::enterAllocate_primitive(cgullParser::Allocate_primitiveContext* ctx) {
+  // place creation of the object first, as the expression will be a parameter
+  if (ctx->primitive_type()) {
+    std::string typeName = ctx->primitive_type()->getText();
+    auto baseType = TypeCheckingListener::resolvePrimitiveType(typeName);
+    auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(baseType);
+    auto newInst = std::make_shared<IRRawInstruction>(
+        "new " + PrimitiveWrapperGenerator::getClassName(primitiveType->getPrimitiveKind()));
+    currentFunction->instructions.push_back(newInst);
+
+    auto dupInst = std::make_shared<IRRawInstruction>("dup");
+    currentFunction->instructions.push_back(dupInst);
+  }
+}
+
+void BytecodeIRGeneratorListener::exitAllocate_primitive(cgullParser::Allocate_primitiveContext* ctx) {
+  if (ctx->primitive_type()) {
+    std::string typeName = ctx->primitive_type()->getText();
+    auto baseType = TypeCheckingListener::resolvePrimitiveType(typeName);
+    auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(baseType);
+
+    if (primitiveType) {
+      std::string refClassName = PrimitiveWrapperGenerator::getClassName(primitiveType->getPrimitiveKind());
+      std::string paramType = BytecodeCompiler::typeToJVMType(primitiveType);
+
+      auto initInst =
+          std::make_shared<IRRawInstruction>("invokespecial " + refClassName + ".<init>(" + paramType + ")V");
+      currentFunction->instructions.push_back(initInst);
+    } else {
+      throw std::runtime_error("Invalid primitive type in allocation: " + typeName);
+    }
+  }
+}
+
+void BytecodeIRGeneratorListener::exitDereferenceable(cgullParser::DereferenceableContext* ctx) {
+  // figure out the type of the dereferenceable
+  auto scope = getCurrentScope(ctx);
+  // type checked, so we can assume that this deref SHOULD become this type
+  auto derefType = expressionTypes[dynamic_cast<antlr4::ParserRuleContext*>(ctx->parent)];
+  if (!derefType) {
+    return;
+  }
+  // identifiers need their object loaded onto the stack
+  if (ctx->IDENTIFIER()) {
+    auto varSymbol = std::dynamic_pointer_cast<VariableSymbol>(scope->resolve(ctx->IDENTIFIER()->getText()));
+    auto loadInst = std::make_shared<IRRawInstruction>("aload " + std::to_string(varSymbol->localIndex));
+    currentFunction->instructions.push_back(loadInst);
+  }
+  if (!dereferenceAssignment) {
+    // if its a primitive, we'll use the wrapper class
+    if (derefType->getKind() == Type::TypeKind::PRIMITIVE) {
+      auto primitiveType = std::dynamic_pointer_cast<PrimitiveType>(derefType);
+      auto irClass = primitiveWrappers[primitiveType->getPrimitiveKind()];
+      if (!irClass) {
+        throw std::runtime_error("Primitive type " + primitiveType->toString() + " has no wrapper class");
+      }
+      // run the getter method
+      auto valueMethod = irClass->getMethod("getValue");
+      if (!valueMethod) {
+        throw std::runtime_error("Primitive type " + primitiveType->toString() + " has no getValue method");
+      }
+      std::string retType = BytecodeCompiler::typeToJVMType(derefType);
+      auto invokeInst = std::make_shared<IRRawInstruction>("invokevirtual " + irClass->name + "." +
+                                                           valueMethod->getMangledName() + "() " + retType);
+      currentFunction->instructions.push_back(invokeInst);
+    } else {
+      throw std::runtime_error("Invalid dereferenceable: " + ctx->getText());
+    }
+  }
+  dereferenceAssignment = false;
+}
+
+void BytecodeIRGeneratorListener::enterDereference_expression(cgullParser::Dereference_expressionContext* ctx) {
+  auto parent = ctx->parent;
+  if (parent && dynamic_cast<cgullParser::Assignment_statementContext*>(parent)) {
+    dereferenceAssignment = true;
   }
 }

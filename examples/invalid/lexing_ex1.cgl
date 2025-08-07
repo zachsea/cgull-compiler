@@ -9,7 +9,6 @@ struct IntVector {
       for (int i = 0; i < size; i++) {
         new_data[i] = data[i];
       }
-      deallocate[] data;
       data = new_data;
       capacity = new_capacity;
     }
@@ -44,13 +43,6 @@ struct IntVector {
     }
     result = result + "]";
     return result;
-  }
-
-  fn $destruct() {
-    deallocate[] data;
-    data = nullptr;
-    size = 0;
-    capacity = 0;
   }
 }
 

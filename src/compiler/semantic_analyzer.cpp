@@ -68,8 +68,6 @@ void SemanticAnalyzer::addBuiltinFunctions() {
   addBuiltinFunction("print", {{"value", stringType}}, {voidType});
   addBuiltinFunction("readline", {}, {stringType});
   addBuiltinFunction("read", {}, {stringType});
-  addBuiltinFunction("read", {{"delimiter", stringType}}, {stringType});
-  addBuiltinFunction("read", {{"delimiter", stringType}, {"maxChars", intType}}, {stringType});
 
   // math functions, eventually will be moved to a math library
   addBuiltinFunction("sqrt", {{"value", floatType}}, {floatType});

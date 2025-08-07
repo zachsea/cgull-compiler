@@ -4,8 +4,8 @@
  * such as logical operators and comaprison operators.
  */
 
-fn main() -> int {
-  println("Provide a number: ");
+fn main() {
+  print("Provide a number: ");
   string input = readline();
   int number = input as int;
 

@@ -8,10 +8,11 @@
 
 class BytecodeIRGeneratorListener : public cgullBaseListener {
 public:
-  BytecodeIRGeneratorListener(ErrorReporter& errorReporter,
-                              std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes,
-                              std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>>& expressionTypes,
-                              std::unordered_set<antlr4::ParserRuleContext*>& expectingStringConversion);
+  BytecodeIRGeneratorListener(
+      ErrorReporter& errorReporter, std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes,
+      std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>>& expressionTypes,
+      std::unordered_set<antlr4::ParserRuleContext*>& expectingStringConversion,
+      std::unordered_map<PrimitiveType::PrimitiveKind, std::shared_ptr<IRClass>>& primitiveWrappers);
 
   const std::vector<std::shared_ptr<IRClass>>& getClasses() const;
 
@@ -41,11 +42,13 @@ private:
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Scope>>& scopes;
   std::unordered_map<antlr4::ParserRuleContext*, std::shared_ptr<Type>> expressionTypes;
   std::unordered_set<antlr4::ParserRuleContext*> expectingStringConversion;
+  std::unordered_map<PrimitiveType::PrimitiveKind, std::shared_ptr<IRClass>>& primitiveWrappers;
   std::vector<std::shared_ptr<IRClass>> classes;
   // currently not used, no additional classes besides main currently supported
   std::stack<std::shared_ptr<IRClass>> currentClassStack;
   std::shared_ptr<FunctionSymbol> currentFunction;
   int currentLocalIndex = 0;
+  bool dereferenceAssignment = false;
 
   int labelCounter = 0;
   std::stack<std::string> breakLabels;
@@ -67,6 +70,8 @@ private:
   std::string getLoadInstruction(const std::shared_ptr<PrimitiveType>& primitiveType);
   std::string getStoreInstruction(const std::shared_ptr<PrimitiveType>& primitiveType);
   void handleLogicalExpression(cgullParser::Base_expressionContext* ctx);
+  void convertPrimitiveToPrimitive(const std::shared_ptr<PrimitiveType>& fromType,
+                                   const std::shared_ptr<PrimitiveType>& toType);
 
   virtual void enterProgram(cgullParser::ProgramContext* ctx) override;
   virtual void exitProgram(cgullParser::ProgramContext* ctx) override;
@@ -114,6 +119,15 @@ private:
   virtual void enterFor_statement(cgullParser::For_statementContext* ctx) override;
 
   virtual void enterInfinite_loop_statement(cgullParser::Infinite_loop_statementContext* ctx) override;
+
+  virtual void exitCast_expression(cgullParser::Cast_expressionContext* ctx) override;
+
+  virtual void enterAllocate_primitive(cgullParser::Allocate_primitiveContext* ctx) override;
+  virtual void exitAllocate_primitive(cgullParser::Allocate_primitiveContext* ctx) override;
+
+  virtual void exitDereferenceable(cgullParser::DereferenceableContext* ctx) override;
+
+  virtual void enterDereference_expression(cgullParser::Dereference_expressionContext* ctx) override;
 };
 
 #endif // BYTECODE_IR_GENERATOR_LISTENER_H
